@@ -15,6 +15,55 @@ stack, and watch headless "stealth" patches remove browser tells one at a time.
 
 ---
 
+## At a glance
+
+```
+                        FINGERPRINT-LAB
+        "a matching User-Agent doesn't make you Chrome"
+
+  ja3_diff.py  ──  THE NETWORK LAYER  (TLS / HTTP2) ────────────────┐
+                                                                    │
+   same URL + same Chrome User-Agent string, four clients:          │
+                                                                    │
+     urllib      ─┐  stdlib · naked-Python TLS stack                │
+     requests    ─┤  popular lib · still a Python TLS stack         │
+     curl_cffi   ─┼─ wire ─▶ tls.peet.ws/api/all ─ reflects ─┐      │
+     tls_client  ─┘           (echoes YOU to YOU)  JA3/JA4   │      │
+                                                             ▼      │
+                                             ┌───────────────────┐  │
+     CHECK 1  JA3 differs across clients ◀───┤ real_chrome.json  │  │
+     CHECK 2  chrome profile JA4 == real? ◀──┤ captured ground   │  │
+                                             │ truth (Chrome 156)│  │
+     urllib ✗ screams "Python"              └───────────────────┘  │
+     curl_cffi / tls_client ✓ forge the ClientHello  (same JA4)    │
+                                                                    │
+  browser_fp.py  ──  THE BROWSER LAYER  (JS environment) ──────────┤
+                                                                    │
+   same Chromium, three ways → count headless tells:                │
+                                                                    │
+     vanilla   ██████  6  plain headless, every tell present        │
+        ▼                                                           │
+     args      ████    4  disable AutomationControlled + UA         │
+        ▼                                                           │
+     stealth   ·       0  init-script patches (webdriver, plugins,  │
+        ▼                 window.chrome, permissions, WebGL)        │
+    (headful)  ·          real headed browser = the target          │
+                                                                    │
+   tells: navigator.webdriver · "HeadlessChrome" UA · 0 plugins ·   │
+          no window.chrome · permissions mismatch · software WebGL  │
+                                                                    │
+  LAYER CAKE — a request is judged bottom-up ──────────────────────┤
+                                                                    │
+     HTTP headers · User-Agent      ◀─ trivially spoofed            │
+    ───────────────────────────────                                 │
+     JS environment (navigator…)    ◀─ browser_fp.py chips away     │
+    ───────────────────────────────                                 │
+     TLS ClientHello (JA3/JA4)      ◀─ ja3_diff.py — gives you away │
+                                       before byte 1 of HTTP ───────┘
+```
+
+---
+
 ## Why this exists
 
 A huge amount of folklore says "just set a real `User-Agent` and you look like a browser."
