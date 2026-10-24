@@ -1,0 +1,7 @@
+# Python venv / caches
+.venv/
+__pycache__/
+*.pyc
+
+# OS cruft
+.DS_Store
