@@ -1,111 +1,183 @@
-# Fingerprint diff lab
+# fingerprint-lab
 
-Two hands-on demos of how automated clients get told apart from real browsers:
+Two small, self-contained experiments that show how servers tell automated clients
+apart from real browsers — at the **network layer** (TLS/HTTP2 fingerprinting) and the
+**browser layer** (headless-detection signals in JavaScript).
 
-- **`ja3_diff.py`** — the **network layer**. Why a spoofed `User-Agent` header doesn't
-  make you look like a browser: the TLS ClientHello (JA3/JA4) and HTTP/2 settings give
-  you away first.
-- **`browser_fp.py`** — the **browser/JS layer**. The signals a detection script reads
-  from inside the page (navigator.webdriver, plugins, window.chrome, WebGL, a
-  permissions inconsistency), and how headless "stealth" patches hide them one by one.
+Both are built to be *run*, not just read. Each prints a side-by-side table and a set
+of pass/fail checks, so you can watch a spoofed `User-Agent` fail to hide a Python TLS
+stack, and watch headless "stealth" patches remove browser tells one at a time.
 
-## Run it
+- **`ja3_diff.py`** — sends an identical request through four HTTP clients and reads back
+  each one's JA3 / JA4 / HTTP-2 fingerprint from a public TLS inspector.
+- **`browser_fp.py`** — launches the same Chromium three different ways and counts how
+  many classic headless tells survive each level of evasion.
+
+---
+
+## Why this exists
+
+A huge amount of folklore says "just set a real `User-Agent` and you look like a browser."
+You don't. Modern bot detection ignores the UA header almost entirely and keys on signals
+the header can't touch:
+
+- **TLS fingerprint (JA3/JA4):** the shape of your TLS ClientHello — cipher order,
+  extensions, curves, ALPN — identifies your TLS stack before any HTTP is sent. A Python
+  client and Chrome look nothing alike here, whatever UA they claim.
+- **HTTP/2 fingerprint:** frame settings and header/pseudo-header order. A client that
+  claims to be Chrome but speaks HTTP/1.1 is contradicting itself.
+- **Browser/JS signals:** `navigator.webdriver`, plugin list, `window.chrome`, WebGL
+  renderer, and consistency checks a headless browser fails by default.
+
+This repo lets you observe all of the above directly, against your own traffic.
+
+---
+
+## Requirements
+
+- Python 3.10+
+- Outbound HTTPS (the TLS demo inspects your own request via `tls.peet.ws`)
+- ~100 MB disk for the browser demo (Playwright downloads Chromium)
+
+## Quickstart
 
 ```bash
-./bootstrap.sh                 # one-time: build .venv, install requests + curl_cffi + tls-client
-.venv/bin/python ja3_diff.py   # urllib, requests, curl_cffi (chrome150/safari17_0), tls_client (chrome_150/safari_16_0)
+./bootstrap.sh                 # builds .venv, installs requests, curl_cffi, tls-client, playwright + chromium
+.venv/bin/python ja3_diff.py   # network layer: TLS/HTTP2 fingerprints
+.venv/bin/python browser_fp.py # browser layer: headless tells
 ```
 
-Two independent forgery engines are compared: **curl_cffi** (patched libcurl) and
-**tls_client** (Go/uTLS behind a Python binding). Their profile naming differs —
-curl_cffi `chrome124`, tls_client `chrome_124`. Skip tls_client with `--tls-client ''`.
+The TLS demo also runs with **zero dependencies** — `python3 ja3_diff.py` works on a
+stock interpreter and prints the stdlib (`urllib`) row alone. Skip the heavy Chromium
+download with `SKIP_BROWSER=1 ./bootstrap.sh`.
 
-Zero-dependency baseline (no venv needed): `python3 ja3_diff.py` runs the urllib
-row alone.
+---
 
-## What you should see
+## `ja3_diff.py` — the network layer
 
-- All clients send the **same Chrome UA header** — the server confirms it saw the
-  same UA from every one.
-- Their **JA3 / JA4 / HTTP/2 fingerprints differ anyway**. That gap is what anti-bot
-  TLS fingerprinting keys on.
-- `urllib` and `requests` present **no HTTP/2 fingerprint** (they negotiated H1); a
-  real Chrome always speaks H2 with a characteristic signature. A "Chrome" client
-  with no H2 fingerprint is a self-contradiction.
-- `curl:chrome124` and `curl:safari17_0` produce **different** JA3s → impersonation
-  is per-profile, not a single trick.
+Fires the *same* request, with the *same* Chrome `User-Agent` header, through four clients
+and asks a TLS inspector what each actually presented on the wire:
 
-## The built-in checks
+| client | what it is |
+|---|---|
+| `urllib` | Python standard library |
+| `requests` | the popular HTTP library — still a Python TLS stack |
+| `curl_cffi` | patched libcurl that impersonates a browser's TLS+HTTP2 |
+| `tls_client` | a *second* forgery engine (Go/uTLS behind a Python binding) |
 
-- **[1] / [1b]** run automatically: JA3 diverges across clients; chrome ≠ safari.
-- **[2] JA4 fidelity (authoritative)** — compares the chrome profile's JA4 to a real
-  Chrome. JA4 is **stable**, so a mismatch is a real failure and **exits `2`**.
-- **[3] JA3 fidelity (advisory)** — compares JA3 too, but only **WARNs** on a
-  mismatch and never fails the build, because modern Chrome's JA3 drifts per
-  connection (see gotcha below).
-- **[4] cross-engine agreement (advisory)** — curl_cffi and tls_client, both forging
-  the same Chrome version (default 150), should produce the **same JA4**. When they do, that's strong evidence
-  both are faithful (two independent implementations, one fingerprint). Their *JA3s*
-  still differ, because each shuffles extensions independently — see the gotcha.
+### Example output
 
-Capture ground truth once:
-  1. Open <https://tls.peet.ws/api/all> in your **real Chrome**.
-  2. Save the raw JSON as `real_chrome.json` in this folder (both JA3 and JA4 are read from it).
-  3. Re-run — `[2]` and `[3]` now compare against your real browser.
+```
+        JA3 (MD5) :
+                    urllib           f21f8e6cf70d5980ecfe9fa2e0ef401c
+                    requests         84442eae56523a0a09a58c8ad56661b2
+                    curl:chrome150   99cb3254c185be9c09a177be9ccd5926
+                    tls:chrome_150   37598074abe667383bd5b9888f33355c
+              JA4 :
+                    urllib           t13d1711_ab0a1bf427ad_8e6e362c5eac
+                    requests         t13d1712h1_ab0a1bf427ad_882d495ac381
+                    curl:chrome150   t13d1516h2_8daaf6152771_806a8c22fdea
+                    tls:chrome_150   t13d1516h2_8daaf6152771_806a8c22fdea
+  HTTP/2 (Akamai) :
+                    urllib           (none)
+                    requests         (none)
+                    curl:chrome150   52d84b11737d980aef856699f885ca86
+                    tls:chrome_150   52d84b11737d980aef856699f885ca86
+```
 
-Or pin hashes directly:
+Read it top to bottom: the UA header is identical across all four (the inspector confirms
+it), yet the fingerprints diverge. `urllib` and `requests` present **no** HTTP/2 fingerprint
+at all — they fell back to HTTP/1.1, which a real Chrome never does. The two impersonation
+engines, meanwhile, land on the **same** JA4 and HTTP/2 hash: two independent
+implementations producing one browser fingerprint.
+
+### Built-in checks
+
+| check | what it asserts | on failure |
+|---|---|---|
+| `[1]` / `[1b]` | fingerprints diverge under one UA; chrome ≠ safari | — |
+| `[2]` JA4 fidelity | the chrome profile's JA4 matches a captured real Chrome | **exit 2** (authoritative — JA4 is stable) |
+| `[3]` JA3 fidelity | JA3 matches too | **warn only** (JA3 drifts by design) |
+| `[4]` cross-engine | `curl_cffi` and `tls_client` agree on JA4 | warn only |
+
+Exit codes are CI-friendly: `0` ok · `2` a JA4 assertion failed · `1` no client ran.
+
+### Capturing a real-browser reference
+
+The fidelity checks need ground truth. Either open <https://tls.peet.ws/api/all> in your
+real browser and save the JSON as `real_chrome.json`, or pin hashes on the command line:
+
 ```bash
-python ja3_diff.py --expect-ja4 t13d1516h2_...   # authoritative, fails build on mismatch
+python ja3_diff.py --expect-ja4 t13d1516h2_...   # authoritative, fails on mismatch
 python ja3_diff.py --expect-ja3 <md5>            # advisory, warns only
 ```
-Exit codes: `0` ok · `2` a JA4 assertion failed · `1` no client ran. (CI-usable.)
 
-## browser_fp.py — the JS layer
+A committed `real_chrome.json` (captured from Chromium 156) ships with the repo, and the
+default profiles (`chrome150`) are chosen to match it — so a bare run is green.
 
-```bash
-.venv/bin/python browser_fp.py          # vanilla / args / stealth headless modes
-.venv/bin/python browser_fp.py --headful  # + a real headed browser as ground truth (opens a window)
-```
+---
 
-Launches the same Chromium three ways along the detection arms race and counts how
-many classic headless **tells** survive each step:
+## `browser_fp.py` — the browser (JS) layer
 
-| mode | what it does | tells seen here |
+Launches the same Chromium three ways, along the real evasion arms race, and counts the
+headless **tells** a detection script would read from inside the page:
+
+| mode | what it does | tells remaining |
 |---|---|---|
 | `vanilla` | plain headless, no mitigation | 6 |
 | `args` | `--disable-blink-features=AutomationControlled` + UA override | 4 |
-| `stealth` | add_init_script patches (webdriver, plugins, languages, window.chrome, permissions, WebGL) | 0 |
+| `stealth` | init-script patches: webdriver, plugins, languages, `window.chrome`, permissions, WebGL | 0 |
 
-Tells checked: `navigator.webdriver`, `HeadlessChrome` in UA, empty `navigator.plugins`,
-missing `window.chrome`, the Notification/permissions-query mismatch, and a
-software/SwiftShader WebGL renderer (no real GPU).
+Tells checked: `navigator.webdriver`, `HeadlessChrome` in the UA, an empty plugin list,
+missing `window.chrome`, the `Notification` / `permissions.query` mismatch, and a
+software/SwiftShader WebGL renderer (no real GPU). The canvas fingerprint is printed too —
+notably, it stays **identical** across all three modes, because none of these patches
+touch it.
 
-**Honest caveat:** "0 tells" means *these* tells are gone, not "undetectable." The WebGL
-spoof is itself detectable (a patched `getParameter.toString()` leaks), and behavioral,
-timing, and cross-signal-consistency checks aren't probed here. Evasion is an arms race,
-not a one-time patch — which is itself the point to make in an interview.
+> **"0 tells" ≠ undetectable.** It means *these* tells are gone. The WebGL spoof is itself
+> detectable (a patched `getParameter.toString()` leaks native-code tampering), and
+> behavioral, timing, and cross-signal consistency checks aren't probed here. Evasion is an
+> ongoing arms race, not a one-time patch.
 
-Runs against `about:blank` — all signals come from the JS environment, no third-party
-site is contacted. Point `--url` at a detector you control to go further.
+Everything runs against `about:blank` — all signals come from the JS environment. Point
+`--url` at a detector you control to go further; add `--headful` for a real headed browser
+as a ground-truth row.
 
-## Gotcha worth knowing (and worth saying in an interview)
+---
 
-**JA3 is unstable for modern Chrome.** Since Chrome 110, Chrome randomizes TLS
-extension order per connection (GREASE + shuffle), so the JA3 *md5 changes run to
-run* — we saw `3fe9cb… / c1d4c9… / f64925…` across three runs of the same profile.
-**JA4 stays constant** (`t13d1516h2_8daaf6152771…`) because it sorts extensions
-before hashing. This is why JA4 largely superseded JA3 for Chrome, and why a naive
-"block this exact JA3" rule is brittle. If your `--expect-ja3` fidelity check flaps,
-that's the reason — compare JA4, or match on the version-specific profile.
+## Key takeaways
 
-## Next experiments
+- **The `User-Agent` header is theater.** Identical UA, four different JA3s.
+- **JA3 is unstable for modern Chrome.** Since Chrome 110, the browser randomizes TLS
+  extension order per connection, so its JA3 changes run to run (observed:
+  `3fe9cb… / c1d4c9… / f64925…` for one profile). **JA4** sorts extensions before hashing
+  and stays constant, which is why it has largely superseded JA3 for Chrome. A static
+  "block this JA3" rule is brittle.
+- **Fingerprint fidelity is version-specific.** curl_cffi's `chrome124` profile does *not*
+  match a real Chrome 156 — same cipher/ALPN prefix, different extension hash. Matching the
+  real JA4 required sweeping profiles and landing on `chrome150`. The flip side is a strong
+  detection signal: a client advertising Chrome 156 while carrying Chrome 124's extension
+  hash is almost certainly forged.
+- **Consistency beats any single signal.** The reliable tells are contradictions *across*
+  layers — Chrome UA + Python TLS, HTTP/2 claim + HTTP/1.1 reality, headless WebGL + human
+  UA — not any one fingerprint in isolation.
 
-- `--impersonate chrome120,chrome131,safari17_0` — compare several real-browser profiles.
-- Add a `tls_client` (Go-binding) row and compare its forgery approach to curl_cffi's.
-- Point `--url` at a JA4+H2-aware target you control to see consistency checks combine.
+---
 
-## Scope
+## Scope & ethics
 
-Everything here inspects **your own** outbound fingerprint against a public echo
-service that reflects it back. No third-party target is probed. Keep any follow-on
-work to targets you're authorized on (vendor demos, your own infra, bug-bounty scope).
+This is an educational project for understanding detection and evasion. Everything here
+inspects **your own** outbound fingerprint against public self-inspection endpoints, or
+reads the local JS environment on `about:blank`. **No third-party target is probed.**
+
+Keep any follow-on work to systems you're authorized to test — vendor demo pages, your own
+infrastructure, or in-scope bug-bounty targets.
+
+## Layout
+
+```
+ja3_diff.py      network-layer TLS/HTTP2 fingerprint diff + fidelity checks
+browser_fp.py    browser-layer headless-tell comparison
+bootstrap.sh     builds the venv and installs dependencies
+real_chrome.json captured real-browser reference for the fidelity checks
+```
