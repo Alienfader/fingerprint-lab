@@ -17,6 +17,7 @@ import uuid
 import h2.config
 import h2.connection
 import h2.events
+import h2.exceptions
 
 from capture.http2_fp import akamai_fingerprint
 from capture.ja4 import compute_ja3, compute_ja4, parse_client_hello
@@ -172,6 +173,8 @@ class CaptureServer:
             else:
                 tls.recv(65536)
                 tls.sendall(RESPONSE)
+        except h2.exceptions.H2Error as e:
+            log.warning("h2 protocol error from %s: %s", addr, type(e).__name__)
         except (OSError, ssl.SSLError):
             pass
         finally:
