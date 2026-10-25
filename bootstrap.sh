@@ -18,6 +18,11 @@ echo "==> installing requests + curl_cffi + tls-client"
 # tls-client: a second, independent forgery engine (Go/uTLS behind a Python binding).
 python -m pip install --quiet "requests>=2.32" "curl_cffi>=0.7" "tls-client>=1.0"
 
+echo "==> installing capture-server + test deps (h2, pytest)"
+# h2: HTTP/2 state machine for the capture server's Akamai fingerprinting.
+# pytest: dev/test dependency for tests/.
+python -m pip install --quiet "h2>=4.1" "pytest>=8"
+
 echo "==> installing playwright (+ chromium) for the browser-fingerprint demo"
 # Heavier: pulls a ~100MB Chromium. Skip with:  SKIP_BROWSER=1 ./bootstrap.sh
 if [ "${SKIP_BROWSER:-0}" != "1" ]; then

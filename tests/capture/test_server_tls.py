@@ -143,12 +143,24 @@ def test_unparseable_clienthello_warns_and_stores_nothing(server, caplog):
     assert server.records == {}
 
 
-def test_server_never_offers_h2(server):
-    """R3: Task 2 serves HTTP/1.1 only; h2 must not be negotiated."""
+def _alpn_client(port, protos):
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    ctx.set_alpn_protocols(["h2", "http/1.1"])
-    with socket.create_connection(("127.0.0.1", server.port), timeout=5) as raw:
-        with ctx.wrap_socket(raw, server_hostname="localhost") as tls:
-            assert tls.selected_alpn_protocol() in ("http/1.1", None)
+    ctx.set_alpn_protocols(protos)
+    raw = socket.create_connection(("127.0.0.1", port), timeout=5)
+    return ctx.wrap_socket(raw, server_hostname="localhost")
+
+
+def test_server_offers_h2(server):
+    """R6: Task 3 offers h2 (preferred); an [h2, http/1.1] client negotiates h2."""
+    with _alpn_client(server.port, ["h2", "http/1.1"]) as tls:
+        assert tls.selected_alpn_protocol() == "h2"
+
+
+def test_http11_only_client_still_served(server):
+    with _alpn_client(server.port, ["http/1.1"]) as tls:
+        assert tls.selected_alpn_protocol() == "http/1.1"
+        tls.settimeout(5)
+        tls.sendall(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        assert tls.recv(1024).startswith(b"HTTP/1.1 200")

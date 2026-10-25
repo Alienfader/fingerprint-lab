@@ -14,6 +14,11 @@ import threading
 import time
 import uuid
 
+import h2.config
+import h2.connection
+import h2.events
+
+from capture.http2_fp import akamai_fingerprint
 from capture.ja4 import compute_ja3, compute_ja4, parse_client_hello
 from capture.record import Record
 
@@ -34,7 +39,7 @@ class CaptureServer:
         self._lock = threading.Lock()
         self._ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self._ctx.load_cert_chain(certfile, keyfile)
-        self._ctx.set_alpn_protocols(["http/1.1"])
+        self._ctx.set_alpn_protocols(["h2", "http/1.1"])
         self._lsock: socket.socket | None = None
         self._thread: threading.Thread | None = None
         self._workers: set[threading.Thread] = set()
@@ -99,6 +104,45 @@ class CaptureServer:
                 time.sleep(0.01)  # PEEK returns at once; avoid a hot spin
             last = len(buf)
 
+    def _serve_h2(self, tls: ssl.SSLSocket, record: Record) -> None:
+        """Speak HTTP/2, capture the Akamai fingerprint from the first request, reply 200."""
+        conn = h2.connection.H2Connection(
+            config=h2.config.H2Configuration(client_side=False, header_encoding="utf-8"))
+        conn.initiate_connection()
+        tls.sendall(conn.data_to_send())
+        settings: list[tuple[int, int]] = []
+        window: int | None = None
+        priorities: list = []
+        deadline = time.monotonic() + 2 * self.io_timeout
+        while time.monotonic() < deadline and not self._stop.is_set():
+            data = tls.recv(65536)  # bounded by tls.settimeout
+            if not data:
+                return
+            for ev in conn.receive_data(data):
+                if isinstance(ev, h2.events.RemoteSettingsChanged) and not settings:
+                    settings = [(int(k), int(c.new_value))
+                                for k, c in ev.changed_settings.items()]
+                elif isinstance(ev, h2.events.WindowUpdated) and ev.stream_id == 0 \
+                        and window is None:
+                    window = ev.delta
+                elif isinstance(ev, h2.events.PriorityUpdated):
+                    priorities.append((ev.stream_id, ev.exclusive, ev.depends_on,
+                                       ev.weight))
+                elif isinstance(ev, h2.events.RequestReceived):
+                    order = [h[1] for h, _ in ev.headers if h.startswith(":")]
+                    s, hx = akamai_fingerprint(settings, window, priorities, order)
+                    record.http2 = {"akamai": s, "akamai_hash": hx, "alpn": "h2"}
+                    conn.send_headers(ev.stream_id, [(":status", "200"),
+                                                     ("content-length", "2")])
+                    conn.send_data(ev.stream_id, b"ok", end_stream=True)
+                    tls.sendall(conn.data_to_send())
+                    conn.close_connection()
+                    tls.sendall(conn.data_to_send())
+                    return
+            out = conn.data_to_send()  # SETTINGS acks etc.
+            if out:
+                tls.sendall(out)
+
     def _handle(self, conn: socket.socket, addr: tuple) -> None:
         tls = None
         try:
@@ -123,8 +167,11 @@ class CaptureServer:
             conn.settimeout(self.io_timeout)
             tls = self._ctx.wrap_socket(conn, server_side=True)
             tls.settimeout(self.io_timeout)
-            tls.recv(65536)
-            tls.sendall(RESPONSE)
+            if tls.selected_alpn_protocol() == "h2":
+                self._serve_h2(tls, record)
+            else:
+                tls.recv(65536)
+                tls.sendall(RESPONSE)
         except (OSError, ssl.SSLError):
             pass
         finally:
