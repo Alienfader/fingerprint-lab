@@ -1,3 +1,4 @@
+import logging
 import socket
 import ssl
 import subprocess
@@ -129,3 +130,25 @@ def test_tls_complete_but_no_http_is_recorded_and_cleaned_up(certpair):
         assert next(iter(srv.records.values())).tls["ja4"]
     finally:
         srv.stop()
+
+
+def test_unparseable_clienthello_warns_and_stores_nothing(server, caplog):
+    body = b"\x01\x00\x00\x02\x03\x03"  # truncated handshake, valid record framing
+    rec = b"\x16\x03\x01" + len(body).to_bytes(2, "big") + body
+    with caplog.at_level(logging.WARNING, logger="capture.server"):
+        s = socket.create_connection(("127.0.0.1", server.port), timeout=5)
+        s.sendall(rec)
+        assert wait_for(lambda: any("parse failed" in m for m in caplog.messages))
+        s.close()
+    assert server.records == {}
+
+
+def test_server_never_offers_h2(server):
+    """R3: Task 2 serves HTTP/1.1 only; h2 must not be negotiated."""
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    ctx.set_alpn_protocols(["h2", "http/1.1"])
+    with socket.create_connection(("127.0.0.1", server.port), timeout=5) as raw:
+        with ctx.wrap_socket(raw, server_hostname="localhost") as tls:
+            assert tls.selected_alpn_protocol() in ("http/1.1", None)

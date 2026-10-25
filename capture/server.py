@@ -7,6 +7,7 @@ privileges needed.
 """
 from __future__ import annotations
 
+import logging
 import socket
 import ssl
 import threading
@@ -15,6 +16,8 @@ import uuid
 
 from capture.ja4 import compute_ja3, compute_ja4, parse_client_hello
 from capture.record import Record
+
+log = logging.getLogger(__name__)
 
 MAX_RECORD = 5 + 0xFFFF
 RESPONSE = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
@@ -101,12 +104,17 @@ class CaptureServer:
         try:
             try:
                 rec_bytes = self._peek_client_hello(conn)
-                if rec_bytes is None:
-                    return
+            except OSError:
+                return  # peek timeout / reset: no ClientHello received
+            if rec_bytes is None:
+                return  # benign: EOF, timeout, or non-TLS first byte
+            try:
                 ch = parse_client_hello(rec_bytes)
                 ja3, ja3_hash = compute_ja3(ch)
                 ja4 = compute_ja4(ch)
-            except (OSError, ValueError, IndexError, KeyError):
+            except Exception as e:  # ClientHello present but unparseable
+                log.warning("ClientHello parse failed from %s: %s (%d bytes)",
+                            addr, type(e).__name__, len(rec_bytes))
                 return
             record = Record(client_addr=addr,
                             tls={"ja3": ja3, "ja3_hash": ja3_hash, "ja4": ja4})
