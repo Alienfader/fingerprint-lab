@@ -34,3 +34,10 @@ def test_dump_run_writes_records_and_readme(tmp_path):
     readme = (out / "README.md").read_text()
     assert "python -m capture.driver" in readme
     assert "curl_cffi" in readme and "Python" in readme
+
+
+def test_dump_run_custom_filename(tmp_path):
+    dump_run([_full()], str(tmp_path), filename="phase1_capture.json")
+    assert (tmp_path / "phase1_capture.json").exists()
+    assert not (tmp_path / "records.json").exists()
+    assert "phase1_capture.json" in (tmp_path / "README.md").read_text()

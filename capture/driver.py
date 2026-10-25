@@ -59,11 +59,8 @@ def _wait(pred, timeout: float) -> bool:
     return False
 
 
-def run_drivers(server_port: int, clients: list[str],
-                server: CaptureServer | None = None) -> list[Record]:
-    server = server or CaptureServer._by_port.get(server_port)
-    if server is None:
-        raise ValueError("no CaptureServer running on port %d" % server_port)
+def run_drivers(server: CaptureServer, clients: list[str]) -> list[Record]:
+    server_port = server.port
     out: list[Record] = []
     for client in clients:
         kind, _, arg = client.partition(":")
@@ -92,9 +89,9 @@ def run_drivers(server_port: int, clients: list[str],
                         and r.js is not None]
         else:
             def primary():
-                return [r for r in new() if r.http is not None]
+                return [r for r in new() if (r.http or {}).get("path") == "/"]
         if not _wait(lambda: bool(primary()), TIMEOUT):
-            raise RuntimeError("no record captured for %s" % client)
+            raise RuntimeError("no record with path %s captured for %s" % (want if nonce else "/", client))
         rec = primary()[0]  # R7: selected by path, incidental records ignored
         rec.client_label = client
         out.append(rec)
@@ -130,10 +127,10 @@ def main(argv: list[str] | None = None) -> int:
         srv = CaptureServer(cert, key)
         port = srv.start()
         try:
-            recs = run_drivers(port, a.clients.split(","), server=srv)
+            recs = run_drivers(srv, a.clients.split(","))
         finally:
             srv.stop()
-    dump_run(recs, a.out, command="python -m capture.driver --out %s --clients %s"
+    dump_run(recs, a.out, filename="phase1_capture.json", command="python -m capture.driver --out %s --clients %s"
              % (a.out, a.clients))
     print("wrote %d records to %s" % (len(recs), a.out))
     return 0
