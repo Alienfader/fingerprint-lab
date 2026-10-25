@@ -150,12 +150,13 @@ I want to be blunt about this, because the table looks better than it is.
    it. My guess (unverified) is that other WebGL parameters, extension lists or WebGPU
    adapter info would. The UA also claims Chrome 124 while the JS engine is 156, which
    feature detection could expose.
-4. **The `--headful` row isn't clean ground truth.** The docstring calls it "a real
-   headed Chromium as ground truth", but the code runs `collect(p, "stealth", …,
-   headful=True)`: it's the *stealth-patched* configuration in a headed window. Its tell
-   count shows what headed rendering adds on top of the patches. It doesn't show what an
-   unmodified browser looks like. I need to fix that, either by adding a true unpatched
-   headed mode or by relabeling the row.
+4. **The `--headful` row was not clean ground truth (fixed).** It used to run
+   `collect(p, "stealth", …, headful=True)`, the stealth-patched configuration in a
+   headed window. It now runs the unpatched configuration headed. On the M1 that row
+   reports the real GPU (`ANGLE Metal Renderer: Apple M1`) and one tell,
+   `navigator.webdriver=true`, which Playwright sets even when headed. The WebGL check
+   also used to flag any vendor containing "Google", which matched real GPUs too
+   (Chrome reports them as `Google Inc. (<maker>)`); it now flags only SwiftShader.
 5. **Behavior isn't measured at all.** No mouse movement, timing, scroll, focus or
    interaction signals are collected. Everything here is a static environment snapshot.
 

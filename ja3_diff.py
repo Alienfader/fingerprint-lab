@@ -269,9 +269,11 @@ def main() -> int:
     chrome_profile = next((p for p in profiles if p.startswith("chrome")), None)
     chrome_client = f"curl:{chrome_profile}" if chrome_profile else None
 
-    print(f"Inspecting self via: {args.url}")
-    print(f"Every client sends this identical UA header:\n  {CHROME_UA}")
-    print(f"curl_cffi profiles: {', '.join(profiles) or '(none)'}")
+    # Keep stdout pure JSON under --json.
+    if not args.json:
+        print(f"Inspecting self via: {args.url}")
+        print(f"Every client sends this identical UA header:\n  {CHROME_UA}")
+        print(f"curl_cffi profiles: {', '.join(profiles) or '(none)'}")
 
     tls_profiles = [p.strip() for p in args.tls_client.split(",") if p.strip()]
 

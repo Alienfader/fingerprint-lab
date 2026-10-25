@@ -135,7 +135,9 @@ def tells(sig: dict) -> list[str]:
         t.append("permissions/Notification mismatch")
     vend = (sig.get("webglVendor") or "")
     rend = (sig.get("webglRenderer") or "")
-    if "SwiftShader" in rend or "Google" in vend or "Google" in rend:
+    # Real Chrome reports every GPU as "Google Inc. (<maker>)" via ANGLE; only
+    # SwiftShader (vendor "(Google)") means software rendering.
+    if "SwiftShader" in rend or vend.endswith("(Google)"):
         t.append("WebGL=software/Google (no real GPU)")
     return t
 
@@ -241,7 +243,8 @@ def main() -> int:
                 print(f"  [{m}] ERROR: {type(e).__name__}: {e}", file=sys.stderr)
         if args.headful:
             try:
-                r = collect(p, "stealth", args.url, headful=True)
+                # Unpatched: ground truth is what a real headed browser looks like.
+                r = collect(p, "vanilla", args.url, headful=True)
                 r["_mode"] = "headful"
                 r["_tells"] = tells(r)
                 rows.append(r)
