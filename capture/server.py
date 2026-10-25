@@ -63,6 +63,8 @@ def parse_h1_headers(raw: bytes) -> list[tuple[str, str]]:
 
 
 class CaptureServer:
+    _by_port: dict[int, "CaptureServer"] = {}  # live servers, for capture.driver
+
     def __init__(self, certfile: str, keyfile: str, host: str = "127.0.0.1",
                  port: int = 0, peek_timeout: float = 5.0, io_timeout: float = 5.0):
         self.host = host
@@ -88,12 +90,14 @@ class CaptureServer:
         s.settimeout(0.2)
         self._lsock = s
         self.port = s.getsockname()[1]
+        CaptureServer._by_port[self.port] = self
         self._thread = threading.Thread(target=self._accept_loop, daemon=True)
         self._thread.start()
         return self.port
 
     def stop(self) -> None:
         self._stop.set()
+        CaptureServer._by_port.pop(self.port, None)
         if self._thread:
             self._thread.join(timeout=5)
         if self._lsock:

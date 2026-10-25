@@ -1,0 +1,188 @@
+[
+  {
+    "client_label": "curl:chrome124",
+    "client_addr": [
+      "127.0.0.1",
+      57188
+    ],
+    "tls": {
+      "ja3": "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,65037-35-11-13-65281-43-23-51-45-18-16-5-10-17513-27,25497-29-23-24,0",
+      "ja3_hash": "793554e13f958389bbe2badc4db17688",
+      "ja4": "t13i1515h2_8daaf6152771_02713d6af862"
+    },
+    "http2": {
+      "akamai": "1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p",
+      "akamai_hash": "b95b8e312a5ef15db8fae48013d3616c140cbb08c34cf0d90b7abbef3b2bc384",
+      "alpn": "h2"
+    },
+    "http": {
+      "header_order": [
+        "sec-ch-ua",
+        "sec-ch-ua-mobile",
+        "sec-ch-ua-platform",
+        "upgrade-insecure-requests",
+        "user-agent",
+        "accept",
+        "sec-fetch-site",
+        "sec-fetch-mode",
+        "sec-fetch-user",
+        "sec-fetch-dest",
+        "accept-encoding",
+        "accept-language",
+        "priority"
+      ],
+      "client_hints": {
+        "sec-ch-ua": "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"macOS\""
+      },
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "path": "/"
+    },
+    "js": null,
+    "captured_at": "2026-10-25T23:12:43.348320+00:00"
+  },
+  {
+    "client_label": "curl:safari17_0",
+    "client_addr": [
+      "127.0.0.1",
+      57189
+    ],
+    "tls": {
+      "ja3": "771,4865-4866-4867-49196-49195-52393-49200-49199-52392-49162-49161-49172-49171-157-156-53-47-49160-49170-10,23-65281-10-11-16-5-13-18-51-45-43-27-21,29-23-24-25,0",
+      "ja3_hash": "5a527c775ff4ae29b4f0c77b113f9625",
+      "ja4": "t13i2013h2_a09f3c656075_14788d8d241b"
+    },
+    "http2": {
+      "akamai": "2:0;4:4194304;3:100|10485760|0|m,s,p,a",
+      "akamai_hash": "5c1a6c7075b5f9f7b4ea9c7ac6ab18b25804ebe7fabc6e6a8e4487d7d86f5f46",
+      "alpn": "h2"
+    },
+    "http": {
+      "header_order": [
+        "accept",
+        "sec-fetch-site",
+        "accept-encoding",
+        "sec-fetch-mode",
+        "user-agent",
+        "accept-language",
+        "sec-fetch-dest"
+      ],
+      "client_hints": {},
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "path": "/"
+    },
+    "js": null,
+    "captured_at": "2026-10-25T23:12:43.351143+00:00"
+  },
+  {
+    "client_label": "tls:chrome_124",
+    "client_addr": [
+      "127.0.0.1",
+      57190
+    ],
+    "tls": {
+      "ja3": "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,17513-23-16-45-51-27-11-43-10-65037-5-18-65281-13-35,25497-29-23-24,0",
+      "ja3_hash": "f834a5ce5d993543b2870591d5006dcc",
+      "ja4": "t13i1515h2_8daaf6152771_02713d6af862"
+    },
+    "http2": {
+      "akamai": "1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p",
+      "akamai_hash": "b95b8e312a5ef15db8fae48013d3616c140cbb08c34cf0d90b7abbef3b2bc384",
+      "alpn": "h2"
+    },
+    "http": {
+      "header_order": [
+        "accept",
+        "accept-encoding",
+        "user-agent"
+      ],
+      "client_hints": {},
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "path": "/"
+    },
+    "js": null,
+    "captured_at": "2026-10-25T23:12:43.363108+00:00"
+  },
+  {
+    "client_label": "stdlib:urllib",
+    "client_addr": [
+      "127.0.0.1",
+      57191
+    ],
+    "tls": {
+      "ja3": "771,4866-4867-4865-49196-49200-49195-49199-52393-52392-49188-49192-49187-49191-159-158-107-103,65281-11-10-35-22-23-13-43-45-51,4588-4587-4590-29-23-30-24-25-41-256-257,0",
+      "ja3_hash": "66e4541357f30a0c6b7e8e46330ef5db",
+      "ja4": "t13i171000_ab0a1bf427ad_0d46a1bf4a7c"
+    },
+    "http2": null,
+    "http": {
+      "header_order": [
+        "Accept-Encoding",
+        "Host",
+        "User-Agent",
+        "Connection"
+      ],
+      "client_hints": {},
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "path": "/"
+    },
+    "js": null,
+    "captured_at": "2026-10-25T23:12:43.373588+00:00"
+  },
+  {
+    "client_label": "browser:chromium",
+    "client_addr": [
+      "127.0.0.1",
+      57195
+    ],
+    "tls": {
+      "ja3": "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,10-27-45-17613-5-23-51-16-65037-18-0-11-13-35-65281-43,4588-29-23-24,0",
+      "ja3_hash": "108916dcf715255547705066554753b7",
+      "ja4": "t13d1516h2_8daaf6152771_27c4a575235d"
+    },
+    "http2": {
+      "akamai": "1:65536;2:0;4:6291456;6:262144|15663105|0|m,a,s,p",
+      "akamai_hash": "b95b8e312a5ef15db8fae48013d3616c140cbb08c34cf0d90b7abbef3b2bc384",
+      "alpn": "h2"
+    },
+    "http": {
+      "header_order": [
+        "sec-ch-ua",
+        "sec-ch-ua-mobile",
+        "sec-ch-ua-platform",
+        "upgrade-insecure-requests",
+        "user-agent",
+        "accept",
+        "sec-fetch-site",
+        "sec-fetch-mode",
+        "sec-fetch-user",
+        "sec-fetch-dest",
+        "accept-encoding",
+        "priority"
+      ],
+      "client_hints": {
+        "sec-ch-ua": "\"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"156\", \"HeadlessChrome\";v=\"156\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"macOS\""
+      },
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "path": "/probe/drv-b7600455c442"
+    },
+    "js": {
+      "webdriver": true,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.8078.4 Safari/537.36",
+      "pluginsLen": 0,
+      "pluginNames": [],
+      "languages": "[\"en-US\"]",
+      "hasWindowChrome": false,
+      "hardwareConc": 8,
+      "platform": "MacIntel",
+      "webglVendor": "Google Inc. (Google)",
+      "webglRenderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)",
+      "permMismatch": true,
+      "canvas": "cdd458601fd86fe2"
+    },
+    "captured_at": "2026-10-25T23:12:43.762510+00:00"
+  }
+]
