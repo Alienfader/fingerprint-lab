@@ -1,4 +1,6 @@
+import dataclasses
 import hashlib
+import random
 import re
 from pathlib import Path
 
@@ -79,3 +81,23 @@ def test_compute_ja3_fixture_regression_pin():
         "51-27-5-65281-23-45-0-11-18-16-65037-17513-10-35-13-43,25497-29-23-24,0"
     )
     assert md5 == "233c2ed2533144fdaafed27e54f93077"
+
+
+def test_ja4_invariant_under_extension_shuffle():
+    # Chrome shuffles extension order per connection; JA4 must not change.
+    ch = parse_client_hello(FIXTURE_BYTES)
+    base = compute_ja4(ch)
+    rng = random.Random(1234)
+    for _ in range(10):
+        exts = list(ch.exts)
+        rng.shuffle(exts)
+        assert compute_ja4(dataclasses.replace(ch, exts=exts)) == base
+    assert compute_ja4(dataclasses.replace(ch, exts=list(reversed(ch.exts)))) == base
+
+
+def test_ja4_sensitive_to_sigalg_order():
+    # FoxIO spec keeps signature algorithms in presentation order.
+    ch = parse_client_hello(FIXTURE_BYTES)
+    assert len(set(ch.sigalgs)) >= 2
+    reordered = dataclasses.replace(ch, sigalgs=list(reversed(ch.sigalgs)))
+    assert compute_ja4(reordered) != compute_ja4(ch)
