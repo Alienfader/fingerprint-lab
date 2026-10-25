@@ -29,6 +29,35 @@ MAX_RECORD = 5 + 0xFFFF
 RESPONSE = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
 
 
+MAX_HEADER_BYTES = 65536
+
+
+def summarize_headers(pairs: list[tuple[str, str]]) -> dict:
+    """Build the record.http layer from (name, value) pairs in received order."""
+    ua = next((v for n, v in pairs if n.lower() == "user-agent"), None)
+    return {"header_order": [n for n, _ in pairs],
+            "client_hints": {n: v for n, v in pairs if n.lower().startswith("sec-ch-")},
+            "user_agent": ua}
+
+
+def parse_h1_headers(raw: bytes) -> list[tuple[str, str]]:
+    """Parse an HTTP/1.x request head into ordered (name, value) pairs.
+
+    Raises ValueError if there is no request line or a header line lacks a colon.
+    """
+    head = raw.split(b"\r\n\r\n", 1)[0]
+    lines = head.decode("latin-1").split("\r\n")
+    if len(lines) < 1 or len(lines[0].split(" ")) != 3:
+        raise ValueError("malformed request line")
+    pairs = []
+    for line in lines[1:]:
+        name, sep, value = line.partition(":")
+        if not sep or not name.strip():
+            raise ValueError("malformed header line")
+        pairs.append((name.strip(), value.strip()))
+    return pairs
+
+
 class CaptureServer:
     def __init__(self, certfile: str, keyfile: str, host: str = "127.0.0.1",
                  port: int = 0, peek_timeout: float = 5.0, io_timeout: float = 5.0):
@@ -132,6 +161,8 @@ class CaptureServer:
                 elif isinstance(ev, h2.events.RequestReceived):
                     order = [h[1] for h, _ in ev.headers if h.startswith(":")]
                     s, hx = akamai_fingerprint(settings, window, priorities, order)
+                    record.http = summarize_headers(
+                        [(n, v) for n, v in ev.headers if not n.startswith(":")])
                     record.http2 = {"akamai": s, "akamai_hash": hx, "alpn": "h2"}
                     conn.send_headers(ev.stream_id, [(":status", "200"),
                                                      ("content-length", "2")])
@@ -143,6 +174,21 @@ class CaptureServer:
             out = conn.data_to_send()  # SETTINGS acks etc.
             if out:
                 tls.sendall(out)
+
+    def _serve_h1(self, tls: ssl.SSLSocket, record: Record, addr: tuple) -> None:
+        """Read the request head, capture header order/client hints, reply 200."""
+        buf = b""
+        while b"\r\n\r\n" not in buf and len(buf) < MAX_HEADER_BYTES:
+            chunk = tls.recv(65536)  # bounded by tls.settimeout
+            if not chunk:
+                break
+            buf += chunk
+        try:
+            record.http = summarize_headers(parse_h1_headers(buf))
+        except ValueError as e:
+            log.warning("h1 request parse failed from %s: %s (%d bytes)",
+                        addr, e, len(buf))
+        tls.sendall(RESPONSE)
 
     def _handle(self, conn: socket.socket, addr: tuple) -> None:
         tls = None
@@ -171,8 +217,7 @@ class CaptureServer:
             if tls.selected_alpn_protocol() == "h2":
                 self._serve_h2(tls, record)
             else:
-                tls.recv(65536)
-                tls.sendall(RESPONSE)
+                self._serve_h1(tls, record, addr)
         except h2.exceptions.H2Error as e:
             log.warning("h2 protocol error from %s: %s", addr, type(e).__name__)
         except (OSError, ssl.SSLError):
