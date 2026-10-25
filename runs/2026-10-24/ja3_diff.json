@@ -1,0 +1,56 @@
+[
+  {
+    "ja3": "771,4866-4867-4865-49196-49200-49195-49199-52393-52392-49188-49192-49187-49191-159-158-107-103,65281-11-10-35-22-23-13-43-45-51-0,4588-4587-4590-29-23-30-24-25-41-256-257,0",
+    "ja3_hash": "0e56dbc63eb7f0679711166971700c23",
+    "ja4": "t13d1711_ab0a1bf427ad_0d46a1bf4a7c",
+    "peetprint_hash": "5eccd32c1206e68874111a1af65de812",
+    "akamai_hash": null,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "_client": "urllib"
+  },
+  {
+    "ja3": "771,4866-4867-4865-49196-49200-49195-49199-52393-52392-49188-49192-49187-49191-159-158-107-103,65281-11-10-22-23-49-13-43-45-51-0-16,4588-4587-4590-29-23-30-24-25-41-256-257,0",
+    "ja3_hash": "48bdbfeea1fc9ceaf58fad881aa20aa0",
+    "ja4": "t13d1712h1_ab0a1bf427ad_8deb338c2fb1",
+    "peetprint_hash": "cd39da0b88d2a26d1525cc82346e99a5",
+    "akamai_hash": null,
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "_client": "requests"
+  },
+  {
+    "ja3": "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,43-17613-51-10-65281-35-23-16-11-65037-5-13-45-18-27-0,4588-29-23-24,0",
+    "ja3_hash": "3088316f1fe28e68f7b25cb553880c19",
+    "ja4": "t13d1516h2_8daaf6152771_806a8c22fdea",
+    "peetprint_hash": "67c3e9111bed9e7f03d2f21d6d88994b",
+    "akamai_hash": "52d84b11737d980aef856699f885ca86",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "_client": "curl:chrome150"
+  },
+  {
+    "ja3": "771,4865-4866-4867-49196-49195-52393-49200-49199-52392-49162-49161-49172-49171-157-156-53-47-49160-49170-10,0-23-65281-10-11-16-5-13-18-51-45-43-27-21,29-23-24-25,0",
+    "ja3_hash": "773906b0efdefa24a7f2b8eb6985bf37",
+    "ja4": "t13d2014h2_a09f3c656075_14788d8d241b",
+    "peetprint_hash": "b2bafdc69377086c3416be278fd21121",
+    "akamai_hash": "959a7e813b79b909a1a0b00a38e8bba3",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "_client": "curl:safari17_0"
+  },
+  {
+    "ja3": "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,5-10-23-65281-11-13-45-17613-35-51-16-43-65037-18-0-27,4588-29-23-24,0",
+    "ja3_hash": "fa5bacda456b7838392a6da005c588fc",
+    "ja4": "t13d1516h2_8daaf6152771_806a8c22fdea",
+    "peetprint_hash": "67c3e9111bed9e7f03d2f21d6d88994b",
+    "akamai_hash": "52d84b11737d980aef856699f885ca86",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "_client": "tls:chrome_150"
+  },
+  {
+    "ja3": "771,4865-4866-4867-49196-49195-52393-49200-49199-52392-49162-49161-49172-49171-157-156-53-47-49160-49170-10,16-5-0-10-27-23-51-45-11-18-65281-43-13-21,29-23-24-25,0",
+    "ja3_hash": "d2397f7ba2c40c15cd7e02062520c67b",
+    "ja4": "t13d2014h2_a09f3c656075_14788d8d241b",
+    "peetprint_hash": "b2bafdc69377086c3416be278fd21121",
+    "akamai_hash": "dda308d35f4e5db7b52a61720ca1b122",
+    "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "_client": "tls:safari_16_0"
+  }
+]

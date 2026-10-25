@@ -1,0 +1,55 @@
+
+navigator.webdriver :
+                      vanilla   True
+                      args      False
+                      stealth   None
+
+          UA (tail) :
+                      vanilla   ... HeadlessChrome/156.0.8078.4 Safari/537.36
+                      args      ...like Gecko) Chrome/124.0.0.0 Safari/537.36
+                      stealth   ...like Gecko) Chrome/124.0.0.0 Safari/537.36
+
+     plugins.length :
+                      vanilla   0
+                      args      0
+                      stealth   5
+
+      window.chrome :
+                      vanilla   False
+                      args      False
+                      stealth   True
+
+      perm mismatch :
+                      vanilla   True
+                      args      True
+                      stealth   False
+
+     WebGL renderer :
+                      vanilla   ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)
+                      args      ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)
+                      stealth   Intel Iris OpenGL Engine
+
+        canvas hash :
+                      vanilla   3a5a21e78b1724c1 (md5)
+                      args      3a5a21e78b1724c1 (md5)
+                      stealth   3a5a21e78b1724c1 (md5)
+
+--------------------------------------------------------------------
+Headless tells remaining per mode (fewer = harder to flag as a bot):
+  vanilla   6 tell(s)
+            - navigator.webdriver=true
+            - 'HeadlessChrome' in UA
+            - navigator.plugins empty
+            - window.chrome missing
+            - permissions/Notification mismatch
+            - WebGL=software/Google (no real GPU)
+  args      4 tell(s)
+            - navigator.plugins empty
+            - window.chrome missing
+            - permissions/Notification mismatch
+            - WebGL=software/Google (no real GPU)
+  stealth   clean
+
+vanilla -> stealth: 6 tells -> 0 tells.
+The easy tells (webdriver, UA, plugins, window.chrome) are cheap to hide.
+

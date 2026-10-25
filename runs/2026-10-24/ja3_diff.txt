@@ -1,0 +1,58 @@
+Inspecting self via: https://tls.peet.ws/api/all
+Every client sends this identical UA header:
+  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+curl_cffi profiles: chrome150, safari17_0
+
+        JA3 (MD5) :
+                    urllib           0e56dbc63eb7f0679711166971700c23
+                    requests         48bdbfeea1fc9ceaf58fad881aa20aa0
+                    curl:chrome150   a80794c45a37f25fdb6ae15da0faf472
+                    curl:safari17_0  773906b0efdefa24a7f2b8eb6985bf37
+                    tls:chrome_150   c4d52e672ea84322e99c44698e5ae02b
+                    tls:safari_16_0  d7f83ec8d8e7981fb320173125aa3ba4
+
+              JA4 :
+                    urllib           t13d1711_ab0a1bf427ad_0d46a1bf4a7c
+                    requests         t13d1712h1_ab0a1bf427ad_8deb338c2fb1
+                    curl:chrome150   t13d1516h2_8daaf6152771_806a8c22fdea
+                    curl:safari17_0  t13d2014h2_a09f3c656075_14788d8d241b
+                    tls:chrome_150   t13d1516h2_8daaf6152771_806a8c22fdea
+                    tls:safari_16_0  t13d2014h2_a09f3c656075_14788d8d241b
+
+  HTTP/2 (Akamai) :
+                    urllib           (none)
+                    requests         (none)
+                    curl:chrome150   52d84b11737d980aef856699f885ca86
+                    curl:safari17_0  959a7e813b79b909a1a0b00a38e8bba3
+                    tls:chrome_150   52d84b11737d980aef856699f885ca86
+                    tls:safari_16_0  dda308d35f4e5db7b52a61720ca1b122
+
+        PeetPrint :
+                    urllib           5eccd32c1206e68874111a1af65de812
+                    requests         cd39da0b88d2a26d1525cc82346e99a5
+                    curl:chrome150   67c3e9111bed9e7f03d2f21d6d88994b
+                    curl:safari17_0  b2bafdc69377086c3416be278fd21121
+                    tls:chrome_150   67c3e9111bed9e7f03d2f21d6d88994b
+                    tls:safari_16_0  b2bafdc69377086c3416be278fd21121
+
+UA the server saw :
+                    urllib           Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+                    requests         Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+                    curl:chrome150   Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+                    curl:safari17_0  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+                    tls:chrome_150   Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+                    tls:safari_16_0  Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+
+--------------------------------------------------------------------
+[1] PASS  JA3 differs across clients (6 distinct) with ONE identical UA.
+          -> the UA header is not what TLS fingerprinting keys on.
+[1b] PASS curl chrome != curl safari JA3 -> impersonation is per-profile, not one trick.
+[2] PASS  curl chrome JA4 == real Chrome (real_chrome.json)
+          t13d1516h2_8daaf6152771_806a8c22fdea
+          -> faithful forgery on the STABLE fingerprint. This is the one that counts.
+[4] PASS  curl_cffi and tls_client agree on Chrome JA4 -> two engines, one fingerprint:
+          t13d1516h2_8daaf6152771_806a8c22fdea
+[3] WARN  curl chrome JA3 a80794c45a37f25fdb6ae15da0faf472 != reference b221f968a31b92f79bfd8220cf1df5ae
+          Expected: Chrome 110+ shuffles TLS extensions per connection, so JA3
+          drifts run-to-run. This is why JA4 (check [2]) is the reliable one.
+
