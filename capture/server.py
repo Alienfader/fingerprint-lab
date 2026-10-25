@@ -7,6 +7,7 @@ privileges needed.
 """
 from __future__ import annotations
 
+import json
 import logging
 import socket
 import ssl
@@ -20,6 +21,7 @@ import h2.events
 import h2.exceptions
 
 from capture.http2_fp import akamai_fingerprint
+from capture.probe import probe_html, valid_nonce
 from capture.ja4 import compute_ja3, compute_ja4, parse_client_hello
 from capture.record import Record
 
@@ -30,6 +32,8 @@ RESPONSE = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok
 
 
 MAX_HEADER_BYTES = 65536
+MAX_BODY_BYTES = 262144
+REASONS = {200: "OK", 204: "No Content", 400: "Bad Request", 413: "Payload Too Large"}
 
 
 def summarize_headers(pairs: list[tuple[str, str]]) -> dict:
@@ -67,6 +71,7 @@ class CaptureServer:
         self.io_timeout = io_timeout
         self.records: dict[str, Record] = {}
         self._lock = threading.Lock()
+        self._nonce_records: dict[str, str] = {}  # nonce -> record id (guarded by _lock)
         self._ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self._ctx.load_cert_chain(certfile, keyfile)
         self._ctx.set_alpn_protocols(["h2", "http/1.1"])
@@ -134,8 +139,36 @@ class CaptureServer:
                 time.sleep(0.01)  # PEEK returns at once; avoid a hot spin
             last = len(buf)
 
-    def _serve_h2(self, tls: ssl.SSLSocket, record: Record) -> None:
-        """Speak HTTP/2, capture the Akamai fingerprint from the first request, reply 200."""
+    def _route(self, method: str, path: str, body: bytes,
+               rid: str) -> tuple[int, str, bytes]:
+        """Return (status, content_type, body). Unknown paths get the default 'ok'."""
+        path = path.split("?", 1)[0]
+        parts = path.split("/")
+        if len(parts) == 3 and parts[0] == "":
+            kind, nonce = parts[1], parts[2]
+            if kind == "probe" and method == "GET":
+                if not valid_nonce(nonce):
+                    return 400, "text/plain", b"bad nonce"
+                with self._lock:
+                    self._nonce_records[nonce] = rid
+                return 200, "text/html; charset=utf-8", probe_html(nonce).encode()
+            if kind == "collect" and method == "POST":
+                try:
+                    data = json.loads(body.decode("utf-8"))
+                    if not isinstance(data, dict):
+                        raise ValueError
+                except ValueError:  # includes UnicodeDecodeError / JSONDecodeError
+                    return 400, "text/plain", b"bad json"
+                with self._lock:
+                    target = self.records.get(self._nonce_records.get(nonce, ""))
+                    if target is not None:
+                        target.js = data
+                return (204 if target is not None else 400), "text/plain", b""
+        return 200, "text/plain", b"ok"
+
+    def _serve_h2(self, tls: ssl.SSLSocket, record: Record, rid: str) -> None:
+        """Speak HTTP/2, capture the Akamai fingerprint from the first request,
+        route it (reading any request body until end_stream), reply, close."""
         conn = h2.connection.H2Connection(
             config=h2.config.H2Configuration(client_side=False, header_encoding="utf-8"))
         conn.initiate_connection()
@@ -143,6 +176,7 @@ class CaptureServer:
         settings: list[tuple[int, int]] = []
         window: int | None = None
         priorities: list = []
+        req: dict | None = None  # {"stream", "method", "path", "body"}
         deadline = time.monotonic() + 2 * self.io_timeout
         while time.monotonic() < deadline and not self._stop.is_set():
             data = tls.recv(65536)  # bounded by tls.settimeout
@@ -158,15 +192,34 @@ class CaptureServer:
                 elif isinstance(ev, h2.events.PriorityUpdated):
                     priorities.append((ev.stream_id, ev.exclusive, ev.depends_on,
                                        ev.weight))
-                elif isinstance(ev, h2.events.RequestReceived):
+                elif isinstance(ev, h2.events.RequestReceived) and req is None:
                     order = [h[1] for h, _ in ev.headers if h.startswith(":")]
                     s, hx = akamai_fingerprint(settings, window, priorities, order)
                     record.http = summarize_headers(
                         [(n, v) for n, v in ev.headers if not n.startswith(":")])
                     record.http2 = {"akamai": s, "akamai_hash": hx, "alpn": "h2"}
-                    conn.send_headers(ev.stream_id, [(":status", "200"),
-                                                     ("content-length", "2")])
-                    conn.send_data(ev.stream_id, b"ok", end_stream=True)
+                    hd = dict(ev.headers)
+                    req = {"stream": ev.stream_id, "method": hd.get(":method", "GET"),
+                           "path": hd.get(":path", "/"), "body": b""}
+                elif isinstance(ev, h2.events.DataReceived):
+                    conn.acknowledge_received_data(ev.flow_controlled_length,
+                                                   ev.stream_id)
+                    if req is not None and ev.stream_id == req["stream"]:
+                        req["body"] += ev.data
+                elif isinstance(ev, h2.events.StreamEnded) and req is not None \
+                        and ev.stream_id == req["stream"]:
+                    if len(req["body"]) > MAX_BODY_BYTES:
+                        status, ctype, payload = 413, "text/plain", b""
+                    else:
+                        status, ctype, payload = self._route(
+                            req["method"], req["path"], req["body"], rid)
+                    hdrs = [(":status", str(status)),
+                            ("content-length", str(len(payload)))]
+                    if payload:
+                        hdrs.append(("content-type", ctype))
+                    conn.send_headers(req["stream"], hdrs, end_stream=not payload)
+                    if payload:
+                        conn.send_data(req["stream"], payload, end_stream=True)
                     tls.sendall(conn.data_to_send())
                     conn.close_connection()
                     tls.sendall(conn.data_to_send())
@@ -175,8 +228,10 @@ class CaptureServer:
             if out:
                 tls.sendall(out)
 
-    def _serve_h1(self, tls: ssl.SSLSocket, record: Record, addr: tuple) -> None:
-        """Read the request head, capture header order/client hints, reply 200."""
+    def _serve_h1(self, tls: ssl.SSLSocket, record: Record, addr: tuple,
+                  rid: str) -> None:
+        """Read the request (head + Content-Length body), capture header order/client
+        hints, route, reply."""
         buf = b""
         while b"\r\n\r\n" not in buf and len(buf) < MAX_HEADER_BYTES:
             chunk = tls.recv(65536)  # bounded by tls.settimeout
@@ -184,11 +239,33 @@ class CaptureServer:
                 break
             buf += chunk
         try:
-            record.http = summarize_headers(parse_h1_headers(buf))
+            pairs = parse_h1_headers(buf)
+            record.http = summarize_headers(pairs)
         except ValueError as e:
             log.warning("h1 request parse failed from %s: %s (%d bytes)",
                         addr, e, len(buf))
-        tls.sendall(RESPONSE)
+            tls.sendall(RESPONSE)
+            return
+        method, path = buf.split(b" ", 2)[0].decode("latin-1"), \
+            buf.split(b" ", 2)[1].decode("latin-1")
+        head, _, body = buf.partition(b"\r\n\r\n")
+        try:
+            clen = int(next((v for n, v in pairs if n.lower() == "content-length"), 0))
+        except ValueError:
+            clen = -1
+        if clen < 0 or clen > MAX_BODY_BYTES:
+            status, ctype, payload = 413 if clen > 0 else 400, "text/plain", b""
+        else:
+            while len(body) < clen:
+                chunk = tls.recv(65536)
+                if not chunk:
+                    break
+                body += chunk
+            status, ctype, payload = self._route(method, path, body[:clen], rid)
+        tls.sendall(("HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n"
+                     "Connection: close\r\n\r\n" % (status, REASONS.get(status, "OK"),
+                                                     ctype, len(payload))).encode()
+                    + payload)
 
     def _handle(self, conn: socket.socket, addr: tuple) -> None:
         tls = None
@@ -209,15 +286,16 @@ class CaptureServer:
                 return
             record = Record(client_addr=addr,
                             tls={"ja3": ja3, "ja3_hash": ja3_hash, "ja4": ja4})
+            rid = uuid.uuid4().hex
             with self._lock:
-                self.records[uuid.uuid4().hex] = record
+                self.records[rid] = record
             conn.settimeout(self.io_timeout)
             tls = self._ctx.wrap_socket(conn, server_side=True)
             tls.settimeout(self.io_timeout)
             if tls.selected_alpn_protocol() == "h2":
-                self._serve_h2(tls, record)
+                self._serve_h2(tls, record, rid)
             else:
-                self._serve_h1(tls, record, addr)
+                self._serve_h1(tls, record, addr, rid)
         except h2.exceptions.H2Error as e:
             log.warning("h2 protocol error from %s: %s", addr, type(e).__name__)
         except (OSError, ssl.SSLError):
