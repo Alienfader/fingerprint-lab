@@ -49,17 +49,22 @@ def test_browser_probe_joins_to_connection(server):
     assert r.tls and r.tls["ja4"]
     assert "userAgent" in r.js and "webdriver" in r.js
     assert "canvas" in r.js and "webglRenderer" in r.js
-    assert r.http is not None  # the GET connection's header layer, same record
+    assert r.http["path"] == "/probe/" + nonce
+    # no leftover js=None record from the /collect POST connection
+    assert not [x for x in list(server.records.values())
+                if (x.http or {}).get("path", "").startswith("/collect/")]
 
 
-def test_non_browser_client_records_js_none_after_timeout(server):
+def test_non_browser_client_leaves_single_js_none_record(server):
     resp = creq.get("https://localhost:%d/probe/nonce-curl-1" % server.port,
                     impersonate="chrome124", verify=False, timeout=5)
     assert resp.status_code == 200
     assert "PROBE_NONCE" in resp.text
     assert wait_for(lambda: any(r.tls for r in list(server.records.values())))
-    recs = [r for r in list(server.records.values()) if r.tls]
-    assert recs and all(r.js is None for r in recs)
+    recs = list(server.records.values())
+    assert len(recs) == 1
+    assert recs[0].tls and recs[0].js is None
+    assert recs[0].http["path"] == "/probe/nonce-curl-1"
 
 
 def test_collect_post_h1_joins_by_nonce(server):
@@ -72,7 +77,9 @@ def test_collect_post_h1_joins_by_nonce(server):
     assert wait_for(lambda: any(r.js for r in list(server.records.values())))
     joined = [r for r in list(server.records.values()) if r.js]
     assert len(joined) == 1 and joined[0].js["userAgent"] == "x"
-    assert joined[0].http is not None  # the GET connection, not the POST one
+    assert joined[0].http["path"] == "/probe/" + nonce  # the GET connection
+    # the /collect POST connection's record was removed after the join
+    assert wait_for(lambda: len(server.records) == 1)
 
 
 def test_collect_post_h2_and_default_path(server):
@@ -85,6 +92,10 @@ def test_collect_post_h2_and_default_path(server):
     assert r.status_code == 204
     assert wait_for(lambda: any(x.js for x in list(server.records.values())))
     assert [x.js for x in list(server.records.values()) if x.js] == [{"userAgent": "h2"}]
+    # server closes after each request: /other and /probe each keep a record;
+    # the /collect connection's record is removed after the join
+    assert sorted(x.http["path"] for x in server.records.values()) == [
+        "/other", "/probe/" + nonce]
 
 
 def test_collect_unknown_nonce_and_bad_json(server):

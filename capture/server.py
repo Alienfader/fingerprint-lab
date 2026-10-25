@@ -160,9 +160,14 @@ class CaptureServer:
                 except ValueError:  # includes UnicodeDecodeError / JSONDecodeError
                     return 400, "text/plain", b"bad json"
                 with self._lock:
-                    target = self.records.get(self._nonce_records.get(nonce, ""))
+                    trid = self._nonce_records.get(nonce, "")
+                    target = self.records.get(trid)
                     if target is not None:
                         target.js = data
+                    if target is not None and trid != rid:
+                        # R7: this POST connection's own record is pure plumbing
+                        # (its TLS duplicates the GET connection's); drop it.
+                        self.records.pop(rid, None)
                 return (204 if target is not None else 400), "text/plain", b""
         return 200, "text/plain", b"ok"
 
@@ -199,6 +204,7 @@ class CaptureServer:
                         [(n, v) for n, v in ev.headers if not n.startswith(":")])
                     record.http2 = {"akamai": s, "akamai_hash": hx, "alpn": "h2"}
                     hd = dict(ev.headers)
+                    record.http["path"] = hd.get(":path", "/")
                     req = {"stream": ev.stream_id, "method": hd.get(":method", "GET"),
                            "path": hd.get(":path", "/"), "body": b""}
                 elif isinstance(ev, h2.events.DataReceived):
@@ -248,6 +254,7 @@ class CaptureServer:
             return
         method, path = buf.split(b" ", 2)[0].decode("latin-1"), \
             buf.split(b" ", 2)[1].decode("latin-1")
+        record.http["path"] = path
         head, _, body = buf.partition(b"\r\n\r\n")
         try:
             clen = int(next((v for n, v in pairs if n.lower() == "content-length"), 0))
