@@ -99,5 +99,7 @@ def test_ja4_sensitive_to_sigalg_order():
     # FoxIO spec keeps signature algorithms in presentation order.
     ch = parse_client_hello(FIXTURE_BYTES)
     assert len(set(ch.sigalgs)) >= 2
-    reordered = dataclasses.replace(ch, sigalgs=list(reversed(ch.sigalgs)))
+    reversed_sigalgs = list(reversed(ch.sigalgs))
+    assert reversed_sigalgs != ch.sigalgs  # guard: reversal must actually reorder
+    reordered = dataclasses.replace(ch, sigalgs=reversed_sigalgs)
     assert compute_ja4(reordered) != compute_ja4(ch)
