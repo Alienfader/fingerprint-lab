@@ -2,7 +2,7 @@ import hashlib
 import re
 from pathlib import Path
 
-from capture.ja4 import GREASE, compute_ja3, compute_ja4, parse_client_hello
+from capture.ja4 import GREASE, ClientHello, compute_ja3, compute_ja4, parse_client_hello
 
 FIXTURE_BYTES = (Path(__file__).parent / "fixtures" / "chrome124_clienthello.bin").read_bytes()
 
@@ -52,3 +52,30 @@ def test_parsed_curves_and_point_formats():
     ch = parse_client_hello(FIXTURE_BYTES)
     assert ch.point_formats == [0]
     assert 29 in ch.curves  # x25519
+
+
+def test_compute_ja3_synthetic_exact_values():
+    # Hand-built hello: pins field order, version placement, GREASE exclusion
+    # on ciphers/extensions/curves, and curves vs point_formats not swapped.
+    ch = ClientHello(
+        legacy_ver=0x0303,
+        ciphers=[0x0A0A, 0x1301, 0xC02B],
+        exts=[0x1A1A, 0x0000, 0x000A, 0x000B, 0x2A2A],
+        curves=[0x3A3A, 29, 23],
+        point_formats=[0, 1],
+    )
+    ja3, md5 = compute_ja3(ch)
+    assert ja3 == "771,4865-49195,0-10-11,29-23,0-1"
+    assert md5 == "98ec1f3f1d3348ab2e2d66e11eaacdf3"
+
+
+def test_compute_ja3_fixture_regression_pin():
+    # Regression guard on the saved bytes (not an oracle match: curl_cffi
+    # shuffles extension order per connection, so peet.ws legitimately differs).
+    ch = parse_client_hello(FIXTURE_BYTES)
+    ja3, md5 = compute_ja3(ch)
+    assert ja3 == (
+        "771,4865-4866-4867-49195-49199-49196-49200-52393-52392-49171-49172-156-157-47-53,"
+        "51-27-5-65281-23-45-0-11-18-16-65037-17513-10-35-13-43,25497-29-23-24,0"
+    )
+    assert md5 == "233c2ed2533144fdaafed27e54f93077"
