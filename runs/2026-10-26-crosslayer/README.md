@@ -16,6 +16,13 @@ by JA4 alone. The details are in the "Phase 3 revision - 2026-10-26" section of
 `docs/superpowers/specs/2026-10-25-version-level-crosslayer-consistency-design.md`. For that reason the verdict here is JA4-free: `scores.json` carries each
 client's JA4 only as non-decisive context, and it never enters the scorer.
 
+This run's own data fits that finding. Here `curl:chrome124` reports the collision value
+above, while `browser:chromium` reports `t13d1516h2_8daaf6152771_806a8c22fdea`, which is
+different. That is not a contradiction. The `d` versus `i` is destination-domain versus
+IP: the browser was pointed at `localhost` and the HTTP clients at `127.0.0.1`. The
+differing extension suffix comes from the different launch profile of that browser run,
+which illustrates the launch-profile-dominated finding rather than undercutting it.
+
 ## Per-client verdicts
 
 5 of 5 clients scored automated. Every client was driven at `/probe/<nonce>`, so

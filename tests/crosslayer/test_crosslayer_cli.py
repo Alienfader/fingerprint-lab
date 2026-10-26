@@ -31,6 +31,7 @@ def test_render_readme_fixture():
     for h in HEADINGS:
         assert h in text
     _check_honesty(text)
+    assert "launch-profile-dominated finding" in text
 
 
 def test_empty_clients_rejected(capsys):
