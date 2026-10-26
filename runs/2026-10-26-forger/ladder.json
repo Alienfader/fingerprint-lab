@@ -1,0 +1,90 @@
+{
+  "command": ".venv/bin/python -m forger --out runs/2026-10-26-forger",
+  "rungs": [
+    {
+      "name": "rung0 naive",
+      "toggles": null,
+      "label": "automated",
+      "confidence": "medium",
+      "surviving_contradictions": [
+        {
+          "layer": "js",
+          "code": "js_absent",
+          "detail": "probe served but no JS results returned",
+          "severity": "strong"
+        }
+      ]
+    },
+    {
+      "name": "rung1 js+webdriver",
+      "toggles": {
+        "webdriver": true
+      },
+      "label": "automated",
+      "confidence": "medium",
+      "surviving_contradictions": [
+        {
+          "layer": "js",
+          "code": "webdriver_true",
+          "detail": "navigator.webdriver is true",
+          "severity": "strong"
+        }
+      ]
+    },
+    {
+      "name": "rung2 no-webdriver+swiftshader",
+      "toggles": {
+        "gpu": "swiftshader"
+      },
+      "label": "automated",
+      "confidence": "medium",
+      "surviving_contradictions": [
+        {
+          "layer": "js",
+          "code": "headless_gpu",
+          "detail": "software GL renderer: Google SwiftShader",
+          "severity": "strong"
+        }
+      ]
+    },
+    {
+      "name": "rung3 real-gpu+no-window-chrome",
+      "toggles": {
+        "window_chrome": false
+      },
+      "label": "automated",
+      "confidence": "medium",
+      "surviving_contradictions": [
+        {
+          "layer": "js",
+          "code": "no_window_chrome",
+          "detail": "Chrome UA but window.chrome absent",
+          "severity": "strong"
+        }
+      ]
+    },
+    {
+      "name": "rung4 window-chrome+ua-mismatch",
+      "toggles": {
+        "ua_match": false
+      },
+      "label": "automated",
+      "confidence": "medium",
+      "surviving_contradictions": [
+        {
+          "layer": "js",
+          "code": "js_ua_mismatch",
+          "detail": "HTTP User-Agent differs from navigator.userAgent",
+          "severity": "strong"
+        }
+      ]
+    },
+    {
+      "name": "rung5 fully-coherent",
+      "toggles": {},
+      "label": "real",
+      "confidence": "high",
+      "surviving_contradictions": []
+    }
+  ]
+}
