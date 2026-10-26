@@ -1,11 +1,16 @@
 import pytest
 
-from challenge.ladder import run_ladder
+from challenge.ladder import LADDER, run_ladder
 
 
 @pytest.mark.integration
 def test_ladder_catches_only_the_coherent_forger(server):
-    rows = {r["name"]: r for r in run_ladder(server)}
-    assert rows["honest-browser"]["passed"] is True
-    assert rows["coherent-forger"]["passed"] is False
-    assert rows["engine-forger"]["passed"] is True
+    rows = run_ladder(server)
+    by = {r["name"]: r for r in rows}
+    assert by["honest-browser"]["passed"] is True
+    assert by["coherent-forger"]["passed"] is False
+    assert by["engine-forger"]["passed"] is True
+    assert len(rows) == len(LADDER)
+    for row, rung in zip(rows, LADDER):
+        assert row["name"] == rung["name"]
+        assert row["passed"] == rung["expect_pass"]

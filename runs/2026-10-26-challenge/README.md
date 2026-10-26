@@ -25,26 +25,28 @@ Each rung is given a fresh challenge. The oracle answers it first, then the rung
 | coherent-forger | curl_cffi | no | CAUGHT |
 | engine-forger | curl_cffi | yes | passed |
 
-These rows are copied from `challenge.json`. The honest browser matches the oracle. The
-coherent forger, the same client that scored `real` in Phase 4, has no engine to compute the
-render and returns no answer. The engine forger computes the answer in a real browser and
-relays it over a curl_cffi connection, so its TLS layer still looks like curl_cffi while its
-answer is correct.
+These rows are generated from `challenge.json` on every run. Rungs caught: 1 of
+3. Rungs passing: 2 of 3.
+
+Caught: coherent-forger
+
+Passing: honest-browser, engine-forger
 
 ## What this measures
 
-The active challenge catches exactly the coherent forger the passive scorer could not. A
-forger can fabricate self-reported values, but it cannot compute a per-nonce seeded render
-without a real engine. Of the three rungs, one is caught (coherent-forger) and two pass.
+The active challenge catches the rungs that cannot compute the render, and only those: here,
+coherent-forger. A forger can fabricate self-reported values, but it cannot compute a per-nonce
+seeded render without a real engine. In Phase 4 that same coherent forger scored `real`
+against the passive scorer.
 
-The honest residual is the engine forger, which passes. The challenge does not make forging
-impossible. It raises the attacker floor from "fabricate roughly 12 JSON fields" (Phase 4) to
-"run a real browser engine." That is a real change in cost, but not a closed door.
+The honest residual is that a rung with a real engine behind a curl_cffi connection still
+passes (honest-browser, engine-forger). The challenge does not make forging impossible. It raises the attacker
+floor from "fabricate roughly 12 JSON fields" (Phase 4) to "run a real browser engine." That
+is a real change in cost, but not a closed door.
 
 The gap that remains is the join. The answer is tied to the probe by an application-level
-nonce, not by the probe's TLS connection. That is why the engine forger can compute in one
-place and speak from another. Binding the answer to the connection (channel binding) is the
-next arm.
+nonce, not by the probe's TLS connection, so an engine can compute in one place and speak
+from another. Binding the answer to the connection (channel binding) is the next arm.
 
 ## Scope and ethics
 
