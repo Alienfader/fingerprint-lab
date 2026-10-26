@@ -4,7 +4,14 @@ import random
 import re
 from pathlib import Path
 
-from capture.ja4 import GREASE, ClientHello, compute_ja3, compute_ja4, parse_client_hello
+from capture.ja4 import (
+    GREASE,
+    ClientHello,
+    compute_ja3,
+    compute_ja4,
+    normalized_ext_key,
+    parse_client_hello,
+)
 
 FIXTURE_BYTES = (Path(__file__).parent / "fixtures" / "chrome124_clienthello.bin").read_bytes()
 
@@ -103,3 +110,39 @@ def test_ja4_sensitive_to_sigalg_order():
     assert reversed_sigalgs != ch.sigalgs  # guard: reversal must actually reorder
     reordered = dataclasses.replace(ch, sigalgs=reversed_sigalgs)
     assert compute_ja4(reordered) != compute_ja4(ch)
+
+
+def test_compute_ja4_strips_grease_from_sigalgs():
+    # Two hellos identical but for a GREASE sigalg injected at the front must
+    # produce the SAME ja4 (GREASE must not reach the sigalg segment).
+    base = ClientHello(legacy_ver=0x0303, ciphers=[0x1301], exts=[0x000d],
+                       sigalgs=[0x0403, 0x0804], sup_vers=[0x0304])
+    greased = dataclasses.replace(base, sigalgs=[0xEAEA, 0x0403, 0x0804])
+    assert compute_ja4(greased) == compute_ja4(base)
+
+
+def test_normalized_key_absorbs_grease_sigalg_and_resumption_exts():
+    base = ClientHello(legacy_ver=0x0303, ciphers=[0x1301],
+                       exts=[0x000d, 0x002b], sigalgs=[0x0403, 0x0804], sup_vers=[0x0304])
+    noisy = dataclasses.replace(base, sigalgs=[0xBABA, 0x0403, 0x0804],
+                                exts=[0x000d, 0x002b, 0x0029, 0x002a])  # + PSK + early_data
+    assert normalized_ext_key(noisy) == normalized_ext_key(base)
+
+
+def test_normalized_key_differs_on_real_ext_set_change():
+    a = ClientHello(legacy_ver=0x0303, ciphers=[0x1301], exts=[0x000d, 0x002b],
+                    sigalgs=[0x0403], sup_vers=[0x0304])
+    b = dataclasses.replace(a, exts=[0x000d, 0x002b, 0x0033])  # key_share added
+    assert normalized_ext_key(a) != normalized_ext_key(b)
+
+
+def test_normalized_key_handles_empty_sigalgs():
+    ch = ClientHello(legacy_ver=0x0303, ciphers=[0x1301], exts=[0x002b], sup_vers=[0x0304])
+    assert re.fullmatch(r"[0-9a-f]{12}", normalized_ext_key(ch))
+
+
+def test_compute_ja4_fixture_value_unchanged():
+    # The chrome124 fixture has no GREASE sigalg, so the GREASE-strip fix must NOT
+    # change its validated oracle value; guards against regressing the Phase 1 pin.
+    ch = parse_client_hello(FIXTURE_BYTES)
+    assert compute_ja4(ch) == "t13d1516h2_8daaf6152771_02713d6af862"

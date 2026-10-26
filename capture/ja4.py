@@ -24,6 +24,10 @@ _EXT_ALPN = 0x0010
 _EXT_SIGNATURE_ALGORITHMS = 0x000D
 _EXT_SUPPORTED_VERSIONS = 0x002B
 
+# pre_shared_key and early_data: present only on resumed connections, so they
+# are excluded from the normalized key.
+RESUMPTION_EXTS: frozenset[int] = frozenset({0x0029, 0x002A})
+
 
 @dataclass
 class ClientHello:
@@ -102,6 +106,14 @@ def parse_client_hello(rec: bytes) -> ClientHello:
     return ch
 
 
+def _ja4_c(exts: list[int], sigalgs: list[int]) -> str:
+    """JA4_c: sha256[:12] of sorted ext hex (minus SNI/ALPN) + '_' + ordered GREASE-free sigalgs."""
+    ext_for_c = sorted(_hex(e) for e in _ng(exts) if e not in (_EXT_SNI, _EXT_ALPN))
+    sig = ",".join(_hex(s) for s in _ng(sigalgs))
+    c_in = ",".join(ext_for_c) + (("_" + sig) if sig else "")
+    return hashlib.sha256(c_in.encode()).hexdigest()[:12]
+
+
 def compute_ja4(ch: ClientHello) -> str:
     vers = _ng(ch.sup_vers) or [ch.legacy_ver]
     ver = VER.get(max(vers), "00")
@@ -111,10 +123,7 @@ def compute_ja4(ch: ClientHello) -> str:
     alpn = (ch.alpns[0][0] + ch.alpns[0][-1]) if ch.alpns else "00"
     ja4_a = f"t{ver}{d}{min(len(ciphers), 99):02d}{min(len(exts), 99):02d}{alpn}"
     ja4_b = hashlib.sha256(",".join(sorted(_hex(c) for c in ciphers)).encode()).hexdigest()[:12]
-    ext_for_c = sorted(_hex(e) for e in exts if e not in (_EXT_SNI, _EXT_ALPN))
-    sig = ",".join(_hex(s) for s in ch.sigalgs)
-    c_in = ",".join(ext_for_c) + (("_" + sig) if sig else "")
-    ja4_c = hashlib.sha256(c_in.encode()).hexdigest()[:12]
+    ja4_c = _ja4_c(exts, ch.sigalgs)
     return f"{ja4_a}_{ja4_b}_{ja4_c}"
 
 
@@ -134,3 +143,8 @@ def compute_ja3(ch: ClientHello) -> tuple[str, str]:
         ]
     )
     return ja3, hashlib.md5(ja3.encode()).hexdigest()
+
+
+def normalized_ext_key(ch: ClientHello) -> str:
+    """Stable per-version key: the JA4_c construction minus resumption extensions."""
+    return _ja4_c([e for e in ch.exts if e not in RESUMPTION_EXTS], ch.sigalgs)
