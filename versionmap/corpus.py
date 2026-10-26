@@ -53,10 +53,16 @@ def _capture_once(server: CaptureServer, exe: str) -> tuple[str, str] | None:
     """Launch the browser once; return (ja4_norm, ja4) or None if no ClientHello."""
     before = set(server.records)
     tmp = tempfile.mkdtemp(prefix="fplab-udd-")
-    p = subprocess.Popen(
-        [exe, *LAUNCH_FLAGS, f"--user-data-dir={tmp}", f"https://127.0.0.1:{server.port}/"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    p = None
     try:
+        try:
+            p = subprocess.Popen(
+                [exe, *LAUNCH_FLAGS, f"--user-data-dir={tmp}",
+                 f"https://127.0.0.1:{server.port}/"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=True)
+        except OSError:
+            return None  # binary cannot exec at all: failed launch
         end = time.time() + CAPTURE_TIMEOUT
         while time.time() < end:
             for rid in list(server.records):
@@ -68,14 +74,15 @@ def _capture_once(server: CaptureServer, exe: str) -> tuple[str, str] | None:
             time.sleep(0.05)
         return None
     finally:
-        try:
-            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
-        except (ProcessLookupError, PermissionError, OSError):
-            pass
-        try:
-            p.wait(timeout=5)
-        except Exception:
-            pass
+        if p is not None:
+            try:
+                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                pass
+            try:
+                p.wait(timeout=5)
+            except Exception:
+                pass
         shutil.rmtree(tmp, ignore_errors=True)
 
 
