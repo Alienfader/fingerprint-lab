@@ -1,21 +1,95 @@
 # fingerprint-lab
 
-Two small, self-contained experiments that show how servers tell automated clients
-apart from real browsers — at the **network layer** (TLS/HTTP2 fingerprinting) and the
-**browser layer** (headless-detection signals in JavaScript).
+[![tests](https://github.com/Alienfader/fingerprint-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/Alienfader/fingerprint-lab/actions/workflows/tests.yml)
 
-Both are built to be *run*, not just read. Each prints a side-by-side table and a set
-of pass/fail checks, so you can watch a spoofed `User-Agent` fail to hide a Python TLS
-stack, and watch headless "stealth" patches remove browser tells one at a time.
+A runnable study of how servers tell **real browsers** from **automated clients** across
+every layer of a request — TLS, HTTP/2, HTTP headers/client-hints, and the JavaScript/GPU
+environment — and of how far a well-formed forgery can get before some layer gives it away.
 
-- **`ja3_diff.py`** — sends an identical request through four HTTP clients and reads back
-  each one's JA3 / JA4 / HTTP-2 fingerprint from a public TLS inspector.
-- **`browser_fp.py`** — launches the same Chromium three different ways and counts how
-  many classic headless tells survive each level of evasion.
+It began as two small scripts that make the point concretely, and grew into a five-phase,
+measured investigation with a loopback capture server, a cross-layer consistency scorer, a
+coherent forger that defeats it, and an active challenge that catches the forger. Every
+result below is produced by a committed artifact under `runs/` and is reproducible with the
+command next to it.
+
+**→ The narrative, with every headline number traced to its artifact: [`docs/FINDINGS.md`](docs/FINDINGS.md).**
+
+Everything is **self-only**: each client is pointed at the researcher's own loopback
+server, or inspects its own outbound fingerprint against a public self-inspection endpoint.
+No third-party target is ever probed.
 
 ---
 
-## At a glance
+## Quickstart
+
+```bash
+# 1. set up (Python 3.12+; developed on 3.15, CI on 3.12/3.13)
+./bootstrap.sh                      # creates .venv, installs deps + a Chromium build
+#    ...or, equivalently, by hand:
+#    python -m venv .venv
+#    .venv/bin/pip install -r requirements.txt
+#    .venv/bin/python -m playwright install chromium
+
+# 2. prove the core instantly — 95 tests, ~9s, no browser, no network:
+.venv/bin/python -m pytest -m "not integration"
+
+# 3. run the full suite (launches a real Chromium on loopback; ~2 min):
+.venv/bin/python -m pytest
+```
+
+If step 2 is green, the repo is working. Step 3 and the phase commands below add the
+browser/network tiers.
+
+---
+
+## The five phases
+
+Each phase is a Python package with a `python -m <pkg>` entry point (except Phase 1, a
+library the others drive). Running it writes a fresh artifact to `runs/`; the committed
+copy is the evidence for the write-up.
+
+| phase | what it shows | run it | artifact |
+|---|---|---|---|
+| **1 — capture server** (`capture/`) | A loopback TLS server that joins a client's JA3/JA4 + HTTP/2 Akamai fingerprint + headers/client-hints + a JS/GPU probe into one record, by nonce. | *(library; driven by the phases below)* | `runs/2026-10-25/phase1_capture.json` |
+| **2 — version map** (`versionmap/`) | How finely a TLS ClientHello alone resolves a Chrome version. Finding: **not well** — the normalized JA4 key is dominated by the launch profile and collides across versions. | `python -m versionmap --out runs/2026-10-25-version-map --n 10` | `runs/2026-10-25-version-map/` |
+| **3 — cross-layer scorer** (`crosslayer/`) | A JA4-free verdict that flags contradictions across layers. Catches all five sample clients; the JA4-perfect `curl_cffi` is caught **only** by the absent JS layer. | `python -m crosslayer --out runs/2026-10-26-crosslayer` | `runs/2026-10-26-crosslayer/` |
+| **4 — coherent forger** (`forger/`) | A forger (impersonation transport + a fabricated, internally-consistent JS payload) that **defeats** the passive scorer — scores `real`, zero contradictions. | `python -m forger --out runs/2026-10-26-forger` | `runs/2026-10-26-forger/` |
+| **5 — active challenge** (`challenge/`) | A per-request seeded canvas/WebGL challenge the client must *compute live*. Catches exactly the forger passive checks could not; the honest residual (an engine-running forger still passes) is measured too. | `python -m challenge --out runs/2026-10-26-challenge` | `runs/2026-10-26-challenge/` |
+
+All phase CLIs take `--out <dir>`; they start their own loopback server and clean it up.
+
+---
+
+## Reproducibility tiers (what each needs)
+
+The project is built so the core verifies anywhere, and the heavier tiers degrade
+gracefully and are documented, not assumed.
+
+- **Tier 0 — unit tests (anywhere).** `pytest -m "not integration"` → **95 tests, ~9s**.
+  Pure logic: fingerprint normalization, the scorer's contradiction checks, payload
+  builders, the ladders. Needs only the `requirements.txt` deps. No browser, no network.
+- **Tier 1 — browser + loopback integration.** `pytest` (full) → **113 tests, ~2 min**, and
+  Phases 3–5. Needs: a Chromium build (installed by `bootstrap.sh` / `playwright install
+  chromium`), `openssl` on `PATH` (for throwaway self-signed loopback certs), and the
+  ability to bind a loopback TLS socket. A few network-marked tests inspect your own
+  traffic via the public `tls.peet.ws` endpoint, so they need outbound HTTPS.
+- **Tier 2 — the full version map (Phase 2).** The committed map was built over six
+  Chrome-for-Testing builds in `~/.cache/fingerprint-lab/chromium`. With only the single
+  Playwright Chromium present you get a valid but trivial one-build map; to regenerate the
+  multi-version map you install several [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/)
+  builds there first. The committed `runs/2026-10-25-version-map/` artifact is the evidence
+  either way.
+
+**Platform:** the unit tests are cross-platform. Browser integration is validated on
+**macOS/arm64**; the browser-launch flags include macOS keychain-safe options
+(`--password-store=basic --use-mock-keychain`) and the build discovery looks in macOS cache
+paths, so other platforms may need small adjustments.
+
+---
+
+## Where it started — the two origin scripts
+
+These two standalone scripts make the core point without the server, and still run:
 
 ```
                         FINGERPRINT-LAB
@@ -42,191 +116,58 @@ stack, and watch headless "stealth" patches remove browser tells one at a time.
    same Chromium, three ways → count headless tells:                │
                                                                     │
      vanilla   ██████  6  plain headless, every tell present        │
-        ▼                                                           │
      args      ████    4  disable AutomationControlled + UA         │
-        ▼                                                           │
      stealth   ·       0  init-script patches (webdriver, plugins,  │
-        ▼                 window.chrome, permissions, WebGL)        │
-    (headful)  ·          real headed browser = the target          │
-                                                                    │
-   tells: navigator.webdriver · "HeadlessChrome" UA · 0 plugins ·   │
-          no window.chrome · permissions mismatch · software WebGL  │
+                          window.chrome, permissions, WebGL)        │
                                                                     │
   LAYER CAKE — a request is judged bottom-up ──────────────────────┤
-                                                                    │
      HTTP headers · User-Agent      ◀─ trivially spoofed            │
-    ───────────────────────────────                                 │
      JS environment (navigator…)    ◀─ browser_fp.py chips away     │
-    ───────────────────────────────                                 │
      TLS ClientHello (JA3/JA4)      ◀─ ja3_diff.py — gives you away │
                                        before byte 1 of HTTP ───────┘
 ```
 
----
-
-## Why this exists
-
-A huge amount of folklore says "just set a real `User-Agent` and you look like a browser."
-You don't. Modern bot detection ignores the UA header almost entirely and keys on signals
-the header can't touch:
-
-- **TLS fingerprint (JA3/JA4):** the shape of your TLS ClientHello — cipher order,
-  extensions, curves, ALPN — identifies your TLS stack before any HTTP is sent. A Python
-  client and Chrome look nothing alike here, whatever UA they claim.
-- **HTTP/2 fingerprint:** frame settings and header/pseudo-header order. A client that
-  claims to be Chrome but speaks HTTP/1.1 is contradicting itself.
-- **Browser/JS signals:** `navigator.webdriver`, plugin list, `window.chrome`, WebGL
-  renderer, and consistency checks a headless browser fails by default.
-
-This repo lets you observe all of the above directly, against your own traffic.
-
----
-
-## Requirements
-
-- Python 3.10+
-- Outbound HTTPS (the TLS demo inspects your own request via `tls.peet.ws`)
-- ~100 MB disk for the browser demo (Playwright downloads Chromium)
-
-## Quickstart
-
-```bash
-./bootstrap.sh                 # builds .venv, installs requests, curl_cffi, tls-client, playwright + chromium
-.venv/bin/python ja3_diff.py   # network layer: TLS/HTTP2 fingerprints
-.venv/bin/python browser_fp.py # browser layer: headless tells
-```
-
-The TLS demo also runs with **zero dependencies** — `python3 ja3_diff.py` works on a
-stock interpreter and prints the stdlib (`urllib`) row alone. Skip the heavy Chromium
-download with `SKIP_BROWSER=1 ./bootstrap.sh`.
-
----
-
-## `ja3_diff.py` — the network layer
-
-Fires the *same* request, with the *same* Chrome `User-Agent` header, through four clients
-and asks a TLS inspector what each actually presented on the wire:
-
-| client | what it is |
-|---|---|
-| `urllib` | Python standard library |
-| `requests` | the popular HTTP library — still a Python TLS stack |
-| `curl_cffi` | patched libcurl that impersonates a browser's TLS+HTTP2 |
-| `tls_client` | a *second* forgery engine (Go/uTLS behind a Python binding) |
-
-### Example output
-
-```
-        JA3 (MD5) :
-                    urllib           f21f8e6cf70d5980ecfe9fa2e0ef401c
-                    requests         84442eae56523a0a09a58c8ad56661b2
-                    curl:chrome150   99cb3254c185be9c09a177be9ccd5926
-                    tls:chrome_150   37598074abe667383bd5b9888f33355c
-              JA4 :
-                    urllib           t13d1711_ab0a1bf427ad_8e6e362c5eac
-                    requests         t13d1712h1_ab0a1bf427ad_882d495ac381
-                    curl:chrome150   t13d1516h2_8daaf6152771_806a8c22fdea
-                    tls:chrome_150   t13d1516h2_8daaf6152771_806a8c22fdea
-  HTTP/2 (Akamai) :
-                    urllib           (none)
-                    requests         (none)
-                    curl:chrome150   52d84b11737d980aef856699f885ca86
-                    tls:chrome_150   52d84b11737d980aef856699f885ca86
-```
-
-Read it top to bottom: the UA header is identical across all four (the inspector confirms
-it), yet the fingerprints diverge. `urllib` and `requests` present **no** HTTP/2 fingerprint
-at all — they fell back to HTTP/1.1, which a real Chrome never does. The two impersonation
-engines, meanwhile, land on the **same** JA4 and HTTP/2 hash: two independent
-implementations producing one browser fingerprint.
-
-### Built-in checks
-
-| check | what it asserts | on failure |
-|---|---|---|
-| `[1]` / `[1b]` | fingerprints diverge under one UA; chrome ≠ safari | — |
-| `[2]` JA4 fidelity | the chrome profile's JA4 matches a captured real Chrome | **exit 2** (authoritative — JA4 is stable) |
-| `[3]` JA3 fidelity | JA3 matches too | **warn only** (JA3 drifts by design) |
-| `[4]` cross-engine | `curl_cffi` and `tls_client` agree on JA4 | warn only |
-
-Exit codes are CI-friendly: `0` ok · `2` a JA4 assertion failed · `1` no client ran.
-
-### Capturing a real-browser reference
-
-The fidelity checks need ground truth. Either open <https://tls.peet.ws/api/all> in your
-real browser and save the JSON as `real_chrome.json`, or pin hashes on the command line:
-
-```bash
-python ja3_diff.py --expect-ja4 t13d1516h2_...   # authoritative, fails on mismatch
-python ja3_diff.py --expect-ja3 <md5>            # advisory, warns only
-```
-
-A committed `real_chrome.json` (captured from Chromium 156) ships with the repo, and the
-default profiles (`chrome150`) are chosen to match it — so a bare run is green.
-
----
-
-## `browser_fp.py` — the browser (JS) layer
-
-Launches the same Chromium three ways, along the real evasion arms race, and counts the
-headless **tells** a detection script would read from inside the page:
-
-| mode | what it does | tells remaining |
-|---|---|---|
-| `vanilla` | plain headless, no mitigation | 6 |
-| `args` | `--disable-blink-features=AutomationControlled` + UA override | 4 |
-| `stealth` | init-script patches: webdriver, plugins, languages, `window.chrome`, permissions, WebGL | 0 |
-
-Tells checked: `navigator.webdriver`, `HeadlessChrome` in the UA, an empty plugin list,
-missing `window.chrome`, the `Notification` / `permissions.query` mismatch, and a
-software/SwiftShader WebGL renderer (no real GPU). The canvas fingerprint is printed too —
-notably, it stays **identical** across all three modes, because none of these patches
-touch it.
-
-> **"0 tells" ≠ undetectable.** It means *these* tells are gone. The WebGL spoof is itself
-> detectable (a patched `getParameter.toString()` leaks native-code tampering), and
-> behavioral, timing, and cross-signal consistency checks aren't probed here. Evasion is an
-> ongoing arms race, not a one-time patch.
-
-Everything runs against `about:blank` — all signals come from the JS environment. Point
-`--url` at a detector you control to go further; add `--headful` for a real headed browser
-as a ground-truth row.
-
----
-
-## Key takeaways
-
-- **The `User-Agent` header is theater.** Identical UA, four different JA3s.
-- **JA3 is unstable for modern Chrome.** Since Chrome 110, the browser randomizes TLS
-  extension order per connection, so its JA3 changes run to run (observed:
-  `3fe9cb… / c1d4c9… / f64925…` for one profile). **JA4** sorts extensions before hashing
-  and stays constant, which is why it has largely superseded JA3 for Chrome. A static
-  "block this JA3" rule is brittle.
-- **Fingerprint fidelity is version-specific.** curl_cffi's `chrome124` profile does *not*
-  match a real Chrome 156 — same cipher/ALPN prefix, different extension hash. Matching the
-  real JA4 required sweeping profiles and landing on `chrome150`. The flip side is a strong
-  detection signal: a client advertising Chrome 156 while carrying Chrome 124's extension
-  hash is almost certainly forged.
-- **Consistency beats any single signal.** The reliable tells are contradictions *across*
-  layers — Chrome UA + Python TLS, HTTP/2 claim + HTTP/1.1 reality, headless WebGL + human
-  UA — not any one fingerprint in isolation.
+- **`ja3_diff.py`** — sends an identical request (identical Chrome `User-Agent`) through
+  `urllib`, `requests`, `curl_cffi`, and `tls_client`, and reads each one's real JA3 / JA4 /
+  HTTP-2 fingerprint back from a public TLS inspector. The UA is identical; the fingerprints
+  diverge. `urllib`/`requests` present no HTTP/2 fingerprint at all (they fell back to
+  HTTP/1.1, which real Chrome never does); the two impersonation engines land on the *same*
+  JA4. CI-friendly exit codes: `0` ok · `2` a JA4 assertion failed · `1` no client ran.
+  Runs on a stock interpreter (the stdlib row needs no dependencies).
+- **`browser_fp.py`** — launches the same Chromium three ways along the real evasion arms
+  race (`vanilla` → `args` → `stealth`) and counts the headless tells a detection script
+  would read in-page: `navigator.webdriver`, a `HeadlessChrome` UA, an empty plugin list,
+  missing `window.chrome`, the `Notification`/`permissions.query` mismatch, and a software
+  WebGL renderer. "0 tells" means *these* tells are gone — not that the client is
+  undetectable (the stealth patches are themselves detectable, and behavioral/consistency
+  checks aren't probed here).
 
 ---
 
 ## Scope & ethics
 
-This is an educational project for understanding detection and evasion. Everything here
-inspects **your own** outbound fingerprint against public self-inspection endpoints, or
-reads the local JS environment on `about:blank`. **No third-party target is probed.**
-
-Keep any follow-on work to systems you're authorized to test — vendor demo pages, your own
-infrastructure, or in-scope bug-bounty targets.
+An educational / research project for understanding detection and evasion. Everything
+inspects **your own** fingerprint — against your own loopback capture server, a public
+self-inspection endpoint, or the local JS environment. **No third-party target is probed.**
+The forger (Phase 4) and the attacker rungs (Phase 5) exist to measure the researcher's own
+detector; they are not public-facing or reusable evasion tools. Keep any follow-on work to
+systems you are authorized to test.
 
 ## Layout
 
 ```
-ja3_diff.py      network-layer TLS/HTTP2 fingerprint diff + fidelity checks
-browser_fp.py    browser-layer headless-tell comparison
-bootstrap.sh     builds the venv and installs dependencies
-real_chrome.json captured real-browser reference for the fidelity checks
+capture/        Phase 1 — loopback TLS/HTTP2 capture server + nonce join (library)
+versionmap/     Phase 2 — JA4-key → Chromium-version map
+crosslayer/     Phase 3 — JA4-free cross-layer consistency scorer
+forger/         Phase 4 — coherent forger + evasion ladder
+challenge/      Phase 5 — active challenge-response + defender ladder
+runs/           committed artifacts (one directory per phase) + the raw captures
+docs/FINDINGS.md   the consolidated five-phase write-up
+docs/superpowers/  the design spec and per-phase plans (full decision trail)
+tests/          unit + integration tests  (pytest -m "not integration" for the fast path)
+ja3_diff.py     origin script — network-layer TLS/HTTP2 fingerprint diff
+browser_fp.py   origin script — browser-layer headless-tell comparison
+bootstrap.sh    one-shot setup (venv + requirements.txt + Chromium)
+requirements.txt pinned dependencies
+real_chrome.json captured real-browser reference for ja3_diff.py's fidelity checks
 ```

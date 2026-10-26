@@ -1,0 +1,21 @@
+# fingerprint-lab — pinned runtime + test dependencies.
+# Install into a venv:  python -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Then, for the browser-integration tests/CLIs:  .venv/bin/python -m playwright install chromium
+#
+# Versions are the ones this repo was developed and its artifacts were produced on
+# (Python 3.15; 3.12+ expected to work, CI runs 3.12/3.13). `./bootstrap.sh` installs the same set.
+
+# HTTP clients used as the "automated client" population.
+requests==2.34.2
+curl_cffi==0.16.3        # patched libcurl; forges browser TLS/HTTP2 via impersonate=
+tls_client==2.0.0        # a second, independent forgery engine (Go/uTLS behind a Python binding)
+
+# HTTP/2 state machine for the loopback capture server's Akamai fingerprinting.
+h2==4.4.1
+
+# Real-browser driver for the browser-layer experiments (Phases 3 & 5 launch Chromium).
+# Installing the package is not enough — also run `python -m playwright install chromium`.
+playwright==1.64.1
+
+# Test runner.
+pytest==9.1.1
