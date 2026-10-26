@@ -37,3 +37,15 @@ def test_caught_set_in_prose_equals_json():
     pline = re.search(r"^Passing: (.*)$", readme, re.M).group(1)
     assert {n.strip() for n in pline.split(",")} == {r["name"] for r in rungs if r["passed"]}
     assert "Rungs caught: %d of %d" % (len(named), len(rungs)) in readme.replace("\n", " ")
+
+
+def test_residual_sentence_names_only_curl_cffi_rungs():
+    rungs, readme = _load()
+    flat = " ".join(readme.split())
+    m = re.search(r"behind a curl_cffi connection still passes \(([^)]*)\)", flat)
+    assert m
+    named = {n.strip() for n in m.group(1).split(",")}
+    assert named
+    tls = {r["name"]: r["tls_layer"] for r in rungs}
+    for n in named:
+        assert tls[n] == "curl_cffi", n

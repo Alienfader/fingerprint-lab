@@ -40,7 +40,7 @@ seeded render without a real engine. In Phase 4 that same coherent forger scored
 against the passive scorer.
 
 The honest residual is that a rung with a real engine behind a curl_cffi connection still
-passes (honest-browser, engine-forger). The challenge does not make forging impossible. It raises the attacker
+passes (engine-forger). The real-Chromium baseline (honest-browser) passes by construction. The challenge does not make forging impossible. It raises the attacker
 floor from "fabricate roughly 12 JSON fields" (Phase 4) to "run a real browser engine." That
 is a real change in cost, but not a closed door.
 

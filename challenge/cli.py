@@ -53,7 +53,7 @@ seeded render without a real engine. In Phase 4 that same coherent forger scored
 against the passive scorer.
 
 The honest residual is that a rung with a real engine behind a curl_cffi connection still
-passes ({pass_names}). The challenge does not make forging impossible. It raises the attacker
+passes ({residual_names}). The real-Chromium baseline ({baseline_names}) passes by construction. The challenge does not make forging impossible. It raises the attacker
 floor from "fabricate roughly 12 JSON fields" (Phase 4) to "run a real browser engine." That
 is a real change in cost, but not a closed door.
 
@@ -92,7 +92,12 @@ def render_readme(doc: dict) -> str:
         "passed" if r["passed"] else "CAUGHT") for r in rows)
     caught = [r["name"] for r in rows if not r["passed"]]
     passing = [r["name"] for r in rows if r["passed"]]
+    residual = [r["name"] for r in rows
+                if r["passed"] and r["tls_layer"] == "curl_cffi" and r["runs_engine"]]
+    baseline = [r["name"] for r in rows if r["passed"] and r["tls_layer"] != "curl_cffi"]
     return _TEMPLATE.format(
+        residual_names=", ".join(residual) or "none",
+        baseline_names=", ".join(baseline) or "none",
         table=table, total=len(rows), caught_count=len(caught), pass_count=len(passing),
         caught_names=", ".join(caught) or "none", pass_names=", ".join(passing) or "none",
         command=doc["command"])
