@@ -5,3 +5,20 @@ __pycache__/
 
 # OS cruft
 .DS_Store
+
+# AI-assistant instruction / config files (local tooling, not part of the project)
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.cursorrules
+.mcp.json
+.github/copilot-instructions.md
+
+# Continuity
+SESSION_HANDOFF.md
+.continuity/*
+# Continuity decision memory — travels with the repo (runtime state stays ignored)
+!.continuity/decisions.jsonl
+!.continuity/.gitattributes
+!.continuity/SESSION_NOTES.md
+!.continuity/INSTRUCTIONS.md
