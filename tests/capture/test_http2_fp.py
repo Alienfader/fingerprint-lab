@@ -25,6 +25,7 @@ def test_akamai_none_window_and_priorities():
 
 
 @pytest.mark.integration
+@pytest.mark.integration
 def test_server_records_http2_matches_oracle(server):
     try:
         o = creq.get("https://tls.peet.ws/api/all", impersonate="chrome124", timeout=15).json()
@@ -42,6 +43,7 @@ def test_server_records_http2_matches_oracle(server):
     assert len(rec.http2["akamai_hash"]) == 64
 
 
+@pytest.mark.integration
 def test_h2_served_offline_records_fingerprint(server):
     r = creq.get(f"https://localhost:{server.port}/", impersonate="chrome124",
                  verify=False, timeout=10)
@@ -53,6 +55,7 @@ def test_h2_served_offline_records_fingerprint(server):
     assert rec.http2["akamai"].count("|") == 3
 
 
+@pytest.mark.integration
 def test_h2_garbage_after_preface_does_not_crash_server(server, caplog):
     import logging
     import socket

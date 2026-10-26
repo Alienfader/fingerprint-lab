@@ -3,6 +3,9 @@ import pytest
 from capture.driver import run_drivers
 
 
+pytestmark = pytest.mark.integration
+
+
 def test_driver_produces_one_record_per_client(server):
     clients = ["curl:chrome124", "tls:chrome_124", "stdlib:urllib"]
     recs = run_drivers(server, clients)

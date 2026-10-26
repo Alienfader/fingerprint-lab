@@ -30,7 +30,7 @@ No third-party target is ever probed.
 #    .venv/bin/pip install -r requirements.txt
 #    .venv/bin/python -m playwright install chromium
 
-# 2. prove the core instantly — 95 tests, ~9s, no browser, no network:
+# 2. prove the core instantly — 75 tests, ~2s, no browser, no loopback, no network:
 .venv/bin/python -m pytest -m "not integration"
 
 # 3. run the full suite (launches a real Chromium on loopback; ~2 min):
@@ -65,9 +65,10 @@ All phase CLIs take `--out <dir>`; they start their own loopback server and clea
 The project is built so the core verifies anywhere, and the heavier tiers degrade
 gracefully and are documented, not assumed.
 
-- **Tier 0 — unit tests (anywhere).** `pytest -m "not integration"` → **95 tests, ~9s**.
+- **Tier 0 — unit tests (anywhere).** `pytest -m "not integration"` → **75 tests, ~2s**.
   Pure logic: fingerprint normalization, the scorer's contradiction checks, payload
-  builders, the ladders. Needs only the `requirements.txt` deps. No browser, no network.
+  builders, the ladders. Needs only the `requirements.txt` deps — no browser, no loopback
+  server, no network. This is what CI runs on every push.
 - **Tier 1 — browser + loopback integration.** `pytest` (full) → **113 tests, ~2 min**, and
   Phases 3–5. Needs: a Chromium build (installed by `bootstrap.sh` / `playwright install
   chromium`), `openssl` on `PATH` (for throwaway self-signed loopback certs), and the

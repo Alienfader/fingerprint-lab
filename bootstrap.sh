@@ -29,7 +29,7 @@ else
 fi
 
 echo
-echo "Done. Verify the core (95 tests, ~9s, no browser/network):"
+echo "Done. Verify the core (75 tests, ~2s, no browser/loopback/network):"
 echo "  .venv/bin/python -m pytest -m \"not integration\""
 echo
 echo "Then explore:"
