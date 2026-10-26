@@ -20,6 +20,9 @@ def get(port, profile):
                     verify=False, timeout=10)
 
 
+pytestmark = pytest.mark.integration
+
+
 def test_captures_ja4_and_completes_handshake(server):
     r = get(server.port, "chrome124")
     assert r.status_code == 200

@@ -7,6 +7,8 @@ import pytest
 
 from tests.capture.conftest import wait_for
 
+pytestmark = pytest.mark.integration
+
 
 def _raw_h1(port, payload: bytes) -> bytes:
     ctx = ssl.create_default_context()
@@ -25,7 +27,6 @@ def _raw_h1(port, payload: bytes) -> bytes:
                 out += c
 
 
-@pytest.mark.integration
 def test_browser_probe_joins_to_connection(server):
     sync_api = pytest.importorskip("playwright.sync_api")
     nonce = "nonce-browser-1"

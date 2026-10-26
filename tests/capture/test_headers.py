@@ -2,6 +2,7 @@ import socket
 import ssl
 
 import curl_cffi.requests as creq
+import pytest
 
 from tests.capture.conftest import wait_for
 
@@ -20,6 +21,9 @@ def _raw_h1(port, payload: bytes) -> bytes:
 
 def _http(server):
     return [r for r in server.records.values() if r.http is not None]
+
+
+pytestmark = pytest.mark.integration
 
 
 def test_h1_header_order_and_client_hints(server):
