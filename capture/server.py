@@ -22,7 +22,7 @@ import h2.exceptions
 
 from capture.http2_fp import akamai_fingerprint
 from capture.probe import probe_html, valid_nonce
-from capture.ja4 import compute_ja3, compute_ja4, parse_client_hello
+from capture.ja4 import compute_ja3, compute_ja4, normalized_ext_key, parse_client_hello
 from capture.record import Record
 
 log = logging.getLogger(__name__)
@@ -287,12 +287,14 @@ class CaptureServer:
                 ch = parse_client_hello(rec_bytes)
                 ja3, ja3_hash = compute_ja3(ch)
                 ja4 = compute_ja4(ch)
+                ja4_norm = normalized_ext_key(ch)
             except Exception as e:  # ClientHello present but unparseable
                 log.warning("ClientHello parse failed from %s: %s (%d bytes)",
                             addr, type(e).__name__, len(rec_bytes))
                 return
             record = Record(client_addr=addr,
-                            tls={"ja3": ja3, "ja3_hash": ja3_hash, "ja4": ja4})
+                            tls={"ja3": ja3, "ja3_hash": ja3_hash, "ja4": ja4,
+                                 "ja4_norm": ja4_norm})
             rid = uuid.uuid4().hex
             with self._lock:
                 self.records[rid] = record
