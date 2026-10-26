@@ -24,6 +24,7 @@ from capture.http2_fp import akamai_fingerprint
 from capture.probe import probe_html, valid_nonce
 from capture.ja4 import compute_ja3, compute_ja4, normalized_ext_key, parse_client_hello
 from capture.record import Record
+from challenge.issue import Challenge, challenge_page
 
 log = logging.getLogger(__name__)
 
@@ -72,6 +73,8 @@ class CaptureServer:
         self.records: dict[str, Record] = {}
         self._lock = threading.Lock()
         self._nonce_records: dict[str, str] = {}  # nonce -> record id (guarded by _lock)
+        self._challenges: dict[str, str] = {}  # nonce -> seed (guarded by _lock)
+        self._answers: dict[str, str] = {}  # nonce -> answer hex (guarded by _lock)
         self._ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         self._ctx.load_cert_chain(certfile, keyfile)
         self._ctx.set_alpn_protocols(["h2", "http/1.1"])
@@ -139,6 +142,14 @@ class CaptureServer:
                 time.sleep(0.01)  # PEEK returns at once; avoid a hot spin
             last = len(buf)
 
+    def register_challenge(self, nonce: str, seed: str) -> None:
+        with self._lock:
+            self._challenges[nonce] = seed
+
+    def get_answer(self, nonce: str) -> str | None:
+        with self._lock:
+            return self._answers.get(nonce)
+
     def _route(self, method: str, path: str, body: bytes,
                rid: str) -> tuple[int, str, bytes]:
         """Return (status, content_type, body). Unknown paths get the default 'ok'."""
@@ -169,6 +180,21 @@ class CaptureServer:
                         # (its TLS duplicates the GET connection's); drop it.
                         self.records.pop(rid, None)
                 return (204 if target is not None else 400), "text/plain", b""
+            if kind == "challenge" and method == "GET":
+                if not valid_nonce(nonce):
+                    return 400, "text/plain", b"bad nonce"
+                with self._lock:
+                    seed = self._challenges.get(nonce)
+                if seed is None:
+                    return 404, "text/plain", b"unknown challenge"
+                return (200, "text/html; charset=utf-8",
+                        challenge_page(Challenge(nonce, seed)).encode())
+            if kind == "answer" and method == "POST":
+                if not valid_nonce(nonce):
+                    return 400, "text/plain", b"bad nonce"
+                with self._lock:
+                    self._answers[nonce] = body.decode("utf-8", "replace")
+                return 204, "text/plain", b""
         return 200, "text/plain", b"ok"
 
     def _serve_h2(self, tls: ssl.SSLSocket, record: Record, rid: str) -> None:
