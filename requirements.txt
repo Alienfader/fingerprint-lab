@@ -3,7 +3,7 @@
 # Then, for the browser-integration tests/CLIs:  .venv/bin/python -m playwright install chromium
 #
 # Versions are the ones this repo was developed and its artifacts were produced on
-# (Python 3.15; 3.11+ expected to work). `./bootstrap.sh` installs the same set.
+# (Python 3.15; 3.12+ expected to work, CI runs 3.12/3.13). `./bootstrap.sh` installs the same set.
 
 # HTTP clients used as the "automated client" population.
 requests==2.34.2

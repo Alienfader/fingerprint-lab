@@ -1,5 +1,7 @@
 # fingerprint-lab
 
+[![tests](https://github.com/Alienfader/fingerprint-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/Alienfader/fingerprint-lab/actions/workflows/tests.yml)
+
 A runnable study of how servers tell **real browsers** from **automated clients** across
 every layer of a request — TLS, HTTP/2, HTTP headers/client-hints, and the JavaScript/GPU
 environment — and of how far a well-formed forgery can get before some layer gives it away.
@@ -21,7 +23,7 @@ No third-party target is ever probed.
 ## Quickstart
 
 ```bash
-# 1. set up (Python 3.11+; developed on 3.15)
+# 1. set up (Python 3.12+; developed on 3.15, CI on 3.12/3.13)
 ./bootstrap.sh                      # creates .venv, installs deps + a Chromium build
 #    ...or, equivalently, by hand:
 #    python -m venv .venv
