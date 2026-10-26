@@ -256,3 +256,110 @@ forgery population vs a real browser, the surviving discriminators are:
 The verdict is per-client, explainable (lists the exact contradictions), confidence-
 tagged, and scoped to what was observable. A true-real headed-browser baseline (for
 false-positive measurement) and the coherent forger remain later-phase work.
+
+---
+
+## Phase 5 — Active challenge-response arm (2026-10-26)
+
+**Why now.** Phase 4 proved the passive cross-layer scorer is defeatable: the
+coherent forger (`curl_cffi chrome124` + a fabricated `/collect` JSON payload joined
+by the application-level nonce) scores `real`, zero contradictions, because *every*
+passive check reads values the client reports about itself. A client that reports
+coherent values is indistinguishable from a real one by inspection. Phase 5 adds the
+defender move the asymmetry demands: an **active challenge** the client must *compute
+live*, where the answer is produced by a real engine rather than declared — so a
+forger that only fabricates static values cannot answer.
+
+**The mechanism (de-risked by spike, 2026-10-26).** The defender issues a per-nonce
+**challenge**: a same-origin page (served by the Phase-1 `CaptureServer`) carrying a
+random `seed`. The client's browser renders a seed-parameterised 2D-canvas + WebGL
+scene, hashes the pixels in-page (`crypto.subtle` SHA-256), and POSTs the hex digest
+back, joined by nonce exactly like the passive probe. Verified facts on this host
+(self-only, `--disable-gpu` → deterministic SwiftShader software rendering):
+
+- **Stable:** the same seed yields a byte-identical digest across independent browser
+  launches.
+- **Seed-sensitive:** a different seed yields a different digest (so a captured answer
+  cannot be replayed for a fresh challenge).
+- **Engine-bound:** a real headless chromium computes it; `curl_cffi` (no JS engine)
+  returns nothing.
+
+**Verification = trusted reference execution.** The server cannot render canvas in
+Python, so it establishes ground truth with a **reference/oracle browser** it
+controls: `expected = oracle(seed)`. A client passes iff its answer equals the
+oracle's for that seed. In this self-only lab the oracle and the honest client are
+the same chromium build on the same host, so deterministic software rendering makes
+exact-match sound. (Cross-GPU/driver variance is why production detectors use
+fuzzy/ML matching; that variance is out of scope here and is stated as a caveat, not
+engineered around.)
+
+**Implementation note from the spike:** the challenge page MUST be served
+same-origin over the loopback server — a `data:` URL's opaque origin blocks the
+answer `fetch`. Reuse the existing `LAUNCH_FLAGS` (incl. `--password-store=basic
+--use-mock-keychain`) + direct `subprocess` launch + `killpg(SIGKILL)` on the
+Chrome-for-Testing binary, exactly as `versionmap/corpus.py` already does safely.
+(The macOS keychain-wedge lesson applies only to the real Google Chrome app, not
+these CfT builds.)
+
+### Goals
+
+- A `challenge/` arm: issue a seeded challenge, drive a real browser to answer it,
+  verify the answer against the oracle, and report pass/fail — integrated with the
+  existing server's nonce join.
+- A **defender ladder** (mirroring Phase 4's evasion ladder) that runs, against the
+  active challenge, the clients that matter and reports each one's outcome:
+  1. **honest headless browser** — answers correctly → **passes** the challenge
+     (baseline that the mechanism admits a real engine).
+  2. **Phase-4 coherent forger** (`curl_cffi` + fabricated `/collect`) — the exact
+     client that beat the passive scorer → **cannot answer** → **caught.** *This is
+     the headline: the active challenge catches precisely the forger passive
+     consistency could not.*
+  3. **engine forger** — `curl_cffi` for the TLS/HTTP layer, but actually runs a
+     headless browser to compute the challenge answer and relays it → **passes.**
+     *This is the honest residual: the active challenge does not make forgery
+     impossible; it raises the forger's floor from "POST 12 JSON fields" to "run a
+     real browser engine," and the remaining gap is that the answer is still joined
+     by application-level nonce, not bound to the probe's TLS connection.*
+- A committed `runs/2026-10-26-challenge/` artifact + honest write-up: the ladder
+  table (client → challenge outcome), the measured asymmetry shift, and the named
+  residual (connection/channel binding) as the motivation for any further arm.
+
+### Non-goals / anti-goals
+
+- **Not** a production bot detector, and **not** reusable evasion tooling. Self-only,
+  loopback, measuring the researcher's own detector. No third-party target, ever.
+- **Not** a claim that the challenge is unbeatable — the engine-forger rung exists
+  specifically to show it is not, and to measure the cost it imposes.
+- **Not** solving cross-GPU hash portability or channel binding; both are named as
+  caveats/future work, not built.
+- **Do not** modify the Phase 3 scorer or the Phase 4 forger package to make a rung
+  pass or fail — they are measured as shipped. The challenge arm is additive.
+
+### Constraints
+
+- Self-only / loopback (127.0.0.1); reuse `capture/`, `versionmap` launch machinery,
+  and the Phase-4 `forger` driver. Stdlib-first; `curl_cffi` for the forger legs.
+- Tests pass under `pytest -W error`; integration tests (real browser / curl_cffi +
+  live server) carry the `integration` marker.
+- Measured, not asserted: every ladder outcome is a real verify() result on a
+  captured answer; every number in the write-up traces to the committed artifact.
+- Attribution: Thiago Goncalves only — no AI/Claude/Anthropic attribution anywhere.
+
+### Decided (my calls)
+
+- **Challenge = seeded 2D-canvas + WebGL pixel-hash** (not a pure-arithmetic
+  challenge, which a forger could reproduce in Python; not a layout-geometry
+  challenge, heavier to author). Pixel rendering requires a real engine and the
+  spike shows it is deterministic here.
+- **Verification by oracle reference run**, exact match, same host/build.
+- **Three-rung ladder** (honest / coherent-forger / engine-forger) as above.
+- **Server integration:** add challenge/answer routes to the existing `CaptureServer`
+  rather than standing up a second server, so the nonce join and TLS capture are
+  reused. The route additions are additive and must not disturb `/probe`//`/collect`.
+
+### Left to the builder (writing-plans)
+
+- Exact module/function boundaries within `challenge/` (issuer, oracle, verifier,
+  driver, ladder, CLI), the server-route wiring, the seed format/entropy, and the
+  precise test cases — to be fixed in the plan, consistent with the Phase 3/4 package
+  shapes.
