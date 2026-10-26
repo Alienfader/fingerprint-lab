@@ -41,12 +41,17 @@ def _resolve_executable(build_dir: Path) -> tuple[Path, str, str] | None:
 
 def _product_version(exe: Path) -> str | None:
     try:
-        out = subprocess.run(
+        proc = subprocess.run(
             [str(exe), "--version"], capture_output=True, text=True, timeout=30
-        ).stdout.split()
+        )
     except (OSError, subprocess.SubprocessError):
         return None
-    return out[-1] if out else None
+    if proc.returncode != 0:
+        return None
+    tokens = proc.stdout.split()
+    if tokens and re.match(r"^\d+(\.\d+)+$", tokens[-1]):
+        return tokens[-1]
+    return None
 
 
 def _version_key(version: str) -> tuple[int, ...]:
