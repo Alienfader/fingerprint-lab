@@ -36,12 +36,14 @@ def _browser_ua(rec):
 def check_no_http2(rec):
     fam = _browser_ua(rec)
     if fam and not rec.http2:
-        return Contradiction("http2", "no_http2", f"{fam} UA but no HTTP/2 observed", "weak")
+        return Contradiction("http2", "no_http2", f"{fam} UA but no HTTP/2 observed", "strong")
     return None
 
 
 def check_akamai_family(rec):
     ua_fam = _browser_ua(rec)
+    if "CriOS" in (_ua(rec) or ""):
+        return None  # iOS Chrome is WebKit-based: Safari-shaped HTTP/2 is legitimate
     if not ua_fam or not rec.http2:
         return None
     ak = akamai_family(rec.http2.get("akamai"))
@@ -51,6 +53,8 @@ def check_akamai_family(rec):
     return None
 
 
+# NOTE: client-hints / sec-fetch checks assume a TLS origin (CaptureServer is
+# TLS-only); real Chrome omits these over plaintext.
 def check_missing_client_hints(rec):
     if _browser_ua(rec) != "chrome":
         return None
@@ -59,7 +63,7 @@ def check_missing_client_hints(rec):
         return None
     if not has_client_hints(rec.http):
         return Contradiction("http", "missing_client_hints",
-                             "Chrome UA without Sec-CH-UA client hints", "weak")
+                             "Chrome UA without Sec-CH-UA client hints", "strong")
     return None
 
 
@@ -68,7 +72,7 @@ def check_missing_sec_fetch(rec):
         return None
     if not has_sec_fetch(rec.http):
         return Contradiction("http", "missing_sec_fetch",
-                             "Chrome UA without Sec-Fetch-* headers", "weak")
+                             "Chrome UA without Sec-Fetch-* headers", "strong")
     return None
 
 
@@ -115,8 +119,8 @@ def check_perm_mismatch(rec):
 def check_js_absent_when_served(rec):
     """Only a signal when a probe page was actually served (observability guard)."""
     path = (rec.http or {}).get("path") or ""
-    if path.startswith("/probe") and rec.js is None:
-        return Contradiction("js", "js_absent", "probe served but no JS results returned", "weak")
+    if (path == "/probe" or path.startswith("/probe/")) and not js_present(rec):
+        return Contradiction("js", "js_absent", "probe served but no JS results returned", "strong")
     return None
 
 

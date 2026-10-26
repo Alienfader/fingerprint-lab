@@ -37,7 +37,8 @@ def test_akamai_family_none_when_consistent_or_missing():
 def test_missing_client_hints_under_chrome_fires():
     rec = Record(http={"user_agent": CHROME_UA, "header_order": ["accept", "user-agent"], "client_hints": {}},
                  http2={"akamai": CHROME_AK, "alpn": "h2"})
-    assert check_missing_client_hints(rec).code == "missing_client_hints"
+    c = check_missing_client_hints(rec)
+    assert c.code == "missing_client_hints" and c.severity == "strong"
 
 
 def test_missing_client_hints_none_for_firefox_or_missing():
@@ -48,7 +49,8 @@ def test_missing_client_hints_none_for_firefox_or_missing():
 
 def test_missing_sec_fetch():
     rec = Record(http={"user_agent": CHROME_UA, "header_order": ["accept"]})
-    assert check_missing_sec_fetch(rec).code == "missing_sec_fetch"
+    c = check_missing_sec_fetch(rec)
+    assert c.code == "missing_sec_fetch" and c.severity == "strong"
     ok = Record(http={"user_agent": CHROME_UA, "header_order": ["sec-fetch-mode"]})
     assert check_missing_sec_fetch(ok) is None
     assert check_missing_sec_fetch(Record()) is None
@@ -56,7 +58,8 @@ def test_missing_sec_fetch():
 
 def test_no_http2_under_browser_ua_fires():
     rec = Record(http={"user_agent": CHROME_UA, "header_order": ["Host"], "client_hints": {}}, http2=None)
-    assert check_no_http2(rec).code == "no_http2"
+    c = check_no_http2(rec)
+    assert c.code == "no_http2" and c.severity == "strong"
 
 
 def test_no_http2_none_without_http_or_with_http2():
@@ -109,7 +112,8 @@ def test_perm_mismatch():
 def test_js_absent_only_when_probe_served():
     served = Record(http={"user_agent": CHROME_UA, "path": "/probe/abc", "client_hints": {"sec-ch-ua": "x"}},
                     http2={"akamai": CHROME_AK, "alpn": "h2"}, js=None)
-    assert check_js_absent_when_served(served).code == "js_absent"
+    c = check_js_absent_when_served(served)
+    assert c.code == "js_absent" and c.severity == "strong"
     not_served = Record(http={"user_agent": CHROME_UA, "path": "/", "client_hints": {}}, js=None)
     assert check_js_absent_when_served(not_served) is None  # observability: not served, not a signal
     assert check_js_absent_when_served(Record(js=None)) is None
@@ -138,3 +142,31 @@ def test_run_checks_ordering_and_empty_record():
     assert keys == sorted(keys)
     assert {"no_http2", "missing_client_hints", "js_absent"} <= {c.code for c in out}
     assert run_checks(rec) == out
+
+
+def test_js_absent_empty_dict_counts_and_probe_prefix_exact():
+    h = {"user_agent": CHROME_UA, "path": "/probe/abc"}
+    assert check_js_absent_when_served(Record(http=h, js={})).code == "js_absent"
+    assert check_js_absent_when_served(Record(http={"path": "/probe"}, js=None)).code == "js_absent"
+    assert check_js_absent_when_served(Record(http={"path": "/probexyz"}, js=None)) is None
+
+
+def test_akamai_family_skips_ios_chrome():
+    ua = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
+          "(KHTML, like Gecko) CriOS/124.0.0.0 Mobile/15E148 Safari/604.1")
+    rec = Record(http={"user_agent": ua}, http2={"akamai": SAFARI_AK})
+    assert check_akamai_family(rec) is None
+
+
+def test_forgery_classes_each_have_a_strong_contradiction():
+    h = {"user_agent": CHROME_UA, "path": "/probe/x", "header_order": [], "client_hints": {}}
+    # curl_cffi chrome124: right TLS/H2 but no client hints, no JS
+    curl_chrome = Record(http=h, http2={"akamai": CHROME_AK, "alpn": "h2"}, js=None)
+    # curl_cffi safari17_0 under Chrome UA: Safari-shaped H2
+    curl_safari = Record(http=h, http2={"akamai": SAFARI_AK, "alpn": "h2"}, js=None)
+    # tls_client chrome_124
+    tls_chrome = Record(http=h, http2={"akamai": CHROME_AK, "alpn": "h2"}, js=None)
+    # stdlib: no h2
+    stdlib = Record(http=h, http2=None, js=None)
+    for r in (curl_chrome, curl_safari, tls_chrome, stdlib):
+        assert any(c.severity == "strong" for c in run_checks(r))
