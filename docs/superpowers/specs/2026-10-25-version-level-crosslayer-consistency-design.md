@@ -215,3 +215,44 @@ Write-up under `docs/` with a dated `runs/` artifact, mirroring
 - **OS scope:** multi-OS via the author's own VMs/cloud; every map entry and verdict
   is tagged with the OS it was built from, so a macOS-only entry never silently
   judges a Windows client.
+
+---
+
+## Phase 3 revision — 2026-10-26 (supersedes the JA4-version-resolution approach)
+
+**Finding (verified by spike, logged to Continuity):** JA4 — full *and* normalized
+ext-hash — is **not** a usable version or forgery discriminator once real-world
+launch-profile diversity is admitted. On this machine:
+
+- The normalized ext-hash is **launch-profile-dominated, not version-dominated**:
+  across direct-launch vs Playwright-headless, keys collide across versions
+  (`{130,140,146}`, `{150,156}`, `{150,151}`, `{151,156}` all share keys).
+- **curl_cffi `chrome124` and real Chrome 130 (Playwright) emit a byte-identical
+  full JA4** (`t13i1515h2_8daaf6152771_02713d6af862`, stable). A trivial
+  impersonation library is indistinguishable from a real browser by JA4, and even
+  collides with a real build under a mainstream automation profile.
+
+The Phase 2 map's clean separation was an artifact of fixing **one** launch
+profile. **JA4 is therefore treated as a defeated input** for detection; the Phase 2
+map stays in the repo as the evidence that produced this negative result.
+
+**Revised Phase 3:** an explainable, multi-tier **cross-layer consistency scorer**
+that does *not* rely on JA4 for its verdict. Grounded in a captured snapshot of the
+forgery population vs a real browser, the surviving discriminators are:
+
+- **HTTP/2 Akamai family** vs claimed UA family (a Safari-shaped Akamai under a
+  Chrome UA is a contradiction — catches `curl_cffi safari17_0`).
+- **Client-hints / Sec-Fetch completeness** under a Chrome UA (a "Chrome" that
+  sends no `Sec-CH-UA`/`Sec-Fetch-*` is a contradiction — catches `tls_client`).
+- **ALPN / HTTP-2 spoken** (a modern-browser UA that cannot speak h2 — catches
+  `stdlib`).
+- **The JS/GPU layer is the backbone** — presence and coherence. Its *absence*
+  under a browser-shaped request catches the JA4- and Akamai-perfect `curl_cffi
+  chrome124` that every network-layer check misses; its *contents* (`webdriver`,
+  software GPU via `webglRenderer`, `window.chrome`, `navigator.userAgentData` vs
+  `Sec-CH-UA`, JS `userAgent` vs HTTP `User-Agent`) expose headless/patched
+  browsers and seed the Phase 4 coherent-forger evaluation.
+
+The verdict is per-client, explainable (lists the exact contradictions), confidence-
+tagged, and scoped to what was observable. A true-real headed-browser baseline (for
+false-positive measurement) and the coherent forger remain later-phase work.
