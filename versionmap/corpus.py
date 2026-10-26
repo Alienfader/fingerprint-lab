@@ -20,6 +20,12 @@ LAUNCH_FLAGS = [
     "--headless=new", "--disable-gpu", "--no-sandbox", "--no-first-run",
     "--no-default-browser-check", "--disable-background-networking",
     "--ignore-certificate-errors",
+    # Keep the browser off the OS keychain: without these, Chrome for Testing
+    # pops a blocking "Chromium Safe Storage" macOS keychain prompt on every
+    # launch, which hangs headless capture (and freezes the desktop). These
+    # affect only credential storage, not the TLS ClientHello, so the key is
+    # unchanged.
+    "--password-store=basic", "--use-mock-keychain",
 ]
 CAPTURE_TIMEOUT = 12.0
 

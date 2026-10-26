@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-26T02:03:27.880416+00:00",
+  "generated_at": "2026-10-26T03:28:04.380177+00:00",
   "recipe": "direct-launch chromium, normalized ClientHello key",
   "launch_flags": [
     "--headless=new",
@@ -8,7 +8,9 @@
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-background-networking",
-    "--ignore-certificate-errors"
+    "--ignore-certificate-errors",
+    "--password-store=basic",
+    "--use-mock-keychain"
   ],
   "command": "python -m versionmap --out runs/2026-10-25-version-map --n 10",
   "entries": [
@@ -78,7 +80,6 @@
       "source": "cft",
       "normalized_key": "dcad5a053991",
       "raw_ja4_samples": [
-        "t13i1516h2_8daaf6152771_dcad5a053991",
         "t13i1516h2_8daaf6152771_dcad5a053991",
         "t13i1516h2_8daaf6152771_dcad5a053991",
         "t13i1516h2_8daaf6152771_dcad5a053991",

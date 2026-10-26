@@ -22,12 +22,15 @@ A key is only useful if one build always produces the same one. During de-riskin
 | 120.0.6099.109 | no | 0 | 0 | no |
 | 130.0.6723.116 | yes | 10 | 1 | yes |
 | 140.0.7339.207 | yes | 10 | 1 | yes |
-| 146.0.7680.165 | yes | 9 | 1 | yes |
+| 146.0.7680.165 | yes | 8 | 1 | yes |
 | 150.0.7871.124 | yes | 10 | 1 | yes |
 | 151.0.7922.34 | yes | 10 | 1 | yes |
 | 156.0.8078.4 | yes | 10 | 1 | yes |
 
 6 of 6 runnable builds gave a single normalized key across all captured connections.
+
+Note on what this run does and does not show: here the distinct-raw-JA4 count is 1 for every build, i.e. the raw JA4_c already equals the normalized key. That is because the GREASE-in-signature_algorithms fix removes the main source of raw per-connection variance, and each capture uses a fresh `--user-data-dir`, so the client never attempts session resumption and the `pre_shared_key`/`early_data` extensions never appear. So in this artifact the normalization's resumption exclusion is a defensive guarantee (exercised by the unit tests, not by these fresh-cache captures), and the pre-fix ~25-keys measurement is what motivates the GREASE-in-sigalgs exclusion. Both exclusions are in the key so a resumption-bearing or GREASE-bearing connection still resolves correctly.
+
 
 ## Resolution granularity
 
@@ -43,8 +46,8 @@ A range key means those builds are indistinguishable by this key; the map can sa
 ## Scope and caveats
 
 - Chrome/Chromium only, on mac/arm64, 6 runnable builds (130.0.6723.116, 140.0.7339.207, 146.0.7680.165, 150.0.7871.124, 151.0.7922.34, 156.0.8078.4).
-- Not runnable on this machine, so excluded: 120.0.6099.109 (OS-incompatible on this macOS).
-- The key is valid only for the recorded launch profile (direct launch with these flags): `--headless=new --disable-gpu --no-sandbox --no-first-run --no-default-browser-check --disable-background-networking --ignore-certificate-errors`. During de-risking I saw a different key for the same build under Playwright's automation flags (an observation outside this artifact, not computed from corpus.json).
+- Not runnable on this machine, so excluded: 120.0.6099.109 (produced no ClientHello; e.g. OS-incompatible on this macOS).
+- The key is valid only for the recorded launch profile (direct launch with these flags): `--headless=new --disable-gpu --no-sandbox --no-first-run --no-default-browser-check --disable-background-networking --ignore-certificate-errors --password-store=basic --use-mock-keychain`. During de-risking I saw a different key for the same build under Playwright's automation flags (an observation outside this artifact, not computed from corpus.json).
 - Multi-OS coverage is deferred; it needs my own Windows and Linux VMs.
 - Enrichment from public fingerprint datasets is deferred pending a license check.
 
@@ -54,6 +57,6 @@ A range key means those builds are indistinguishable by this key; the map can sa
 python -m versionmap --out runs/2026-10-25-version-map --n 10
 ```
 
-Generated at 2026-10-26T02:03:27.880416+00:00.
+Generated at 2026-10-26T03:28:04.382759+00:00.
 
 Author: Thiago Goncalves

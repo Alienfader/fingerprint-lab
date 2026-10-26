@@ -69,6 +69,18 @@ def render_readme(entries: list[CorpusEntry], vmap, metadata: dict) -> str:
     a("")
     a("%d of %d runnable builds gave a single normalized key across all "
       "captured connections." % (len(stable), len(runnable)))
+    a("")
+    a("Note on what this run does and does not show: here the distinct-raw-JA4 "
+      "count is 1 for every build, i.e. the raw JA4_c already equals the "
+      "normalized key. That is because the GREASE-in-signature_algorithms fix "
+      "removes the main source of raw per-connection variance, and each capture "
+      "uses a fresh `--user-data-dir`, so the client never attempts session "
+      "resumption and the `pre_shared_key`/`early_data` extensions never appear. "
+      "So in this artifact the normalization's resumption exclusion is a "
+      "defensive guarantee (exercised by the unit tests, not by these fresh-cache "
+      "captures), and the pre-fix ~25-keys measurement is what motivates the "
+      "GREASE-in-sigalgs exclusion. Both exclusions are in the key so a "
+      "resumption-bearing or GREASE-bearing connection still resolves correctly.\n")
     if unstable:
         a("Unstable builds (excluded from the map): %s."
           % ", ".join(e.version for e in unstable))
@@ -90,8 +102,9 @@ def render_readme(entries: list[CorpusEntry], vmap, metadata: dict) -> str:
       % (metadata["os"], metadata["arch"], len(runnable),
          ", ".join(e.version for e in runnable)))
     if excluded:
-        a("- Not runnable on this machine, so excluded: %s (OS-incompatible on "
-          "this macOS)." % ", ".join(e.version for e in excluded))
+        a("- Not runnable on this machine, so excluded: %s (produced no "
+          "ClientHello; e.g. OS-incompatible on this macOS)."
+          % ", ".join(e.version for e in excluded))
     a("- The key is valid only for the recorded launch profile (direct launch "
       "with these flags): `%s`. During de-risking I saw a different key for "
       "the same build under Playwright's automation flags (an observation "

@@ -54,7 +54,7 @@
   "metadata": {
     "arch": "arm64",
     "command": "python -m versionmap --out runs/2026-10-25-version-map --n 10",
-    "generated_at": "2026-10-26T02:03:27.883238+00:00",
+    "generated_at": "2026-10-26T03:28:04.382759+00:00",
     "launch_flags": [
       "--headless=new",
       "--disable-gpu",
@@ -62,7 +62,9 @@
       "--no-first-run",
       "--no-default-browser-check",
       "--disable-background-networking",
-      "--ignore-certificate-errors"
+      "--ignore-certificate-errors",
+      "--password-store=basic",
+      "--use-mock-keychain"
     ],
     "os": "mac",
     "recipe": "direct-launch chromium, normalized ClientHello key (tls.ja4_norm)"
