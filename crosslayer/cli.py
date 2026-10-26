@@ -17,6 +17,7 @@ from capture.server import CaptureServer
 from crosslayer.scorer import score
 
 POPULATION = list(DEFAULT_CLIENTS)
+DEFAULT_OUT = "runs/2026-10-26-crosslayer"
 REPRODUCE = "python -m crosslayer --out runs/2026-10-26-crosslayer"
 SPEC = "docs/superpowers/specs/2026-10-25-version-level-crosslayer-consistency-design.md"
 
@@ -152,10 +153,14 @@ The other layers catch clients that are inconsistent with their own claimed iden
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--out", default="runs/2026-10-26-crosslayer")
+    ap.add_argument("--out", default=DEFAULT_OUT)
     ap.add_argument("--clients", default=",".join(POPULATION))
     a = ap.parse_args(argv)
-    recs = _capture(a.clients.split(","))
+    clients = [c.strip() for c in a.clients.split(",") if c.strip()]
+    if not clients:
+        print("error: --clients is empty; give at least one client", file=sys.stderr)
+        return 1
+    recs = _capture(clients)
     scores = {"command": "python -m crosslayer --out %s" % a.out,
               "note": "ja4 fields are non-decisive context; the verdict does not use JA4",
               "clients": [_row(r) for r in recs]}
