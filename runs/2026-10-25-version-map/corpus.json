@@ -1,0 +1,165 @@
+{
+  "generated_at": "2026-10-26T02:03:27.880416+00:00",
+  "recipe": "direct-launch chromium, normalized ClientHello key",
+  "launch_flags": [
+    "--headless=new",
+    "--disable-gpu",
+    "--no-sandbox",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-background-networking",
+    "--ignore-certificate-errors"
+  ],
+  "command": "python -m versionmap --out runs/2026-10-25-version-map --n 10",
+  "entries": [
+    {
+      "family": "chromium",
+      "version": "120.0.6099.109",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "cft",
+      "normalized_key": "",
+      "raw_ja4_samples": [],
+      "n": 10,
+      "runnable": false,
+      "stable": false
+    },
+    {
+      "family": "chromium",
+      "version": "130.0.6723.116",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "cft",
+      "normalized_key": "d8a2da3f94cd",
+      "raw_ja4_samples": [
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd"
+      ],
+      "n": 10,
+      "runnable": true,
+      "stable": true
+    },
+    {
+      "family": "chromium",
+      "version": "140.0.7339.207",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "cft",
+      "normalized_key": "d8a2da3f94cd",
+      "raw_ja4_samples": [
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd",
+        "t13i1515h2_8daaf6152771_d8a2da3f94cd"
+      ],
+      "n": 10,
+      "runnable": true,
+      "stable": true
+    },
+    {
+      "family": "chromium",
+      "version": "146.0.7680.165",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "cft",
+      "normalized_key": "dcad5a053991",
+      "raw_ja4_samples": [
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991",
+        "t13i1516h2_8daaf6152771_dcad5a053991"
+      ],
+      "n": 10,
+      "runnable": true,
+      "stable": true
+    },
+    {
+      "family": "chromium",
+      "version": "150.0.7871.124",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "cft",
+      "normalized_key": "cb7bf5808d99",
+      "raw_ja4_samples": [
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99",
+        "t13i1516h2_8daaf6152771_cb7bf5808d99"
+      ],
+      "n": 10,
+      "runnable": true,
+      "stable": true
+    },
+    {
+      "family": "chromium",
+      "version": "151.0.7922.34",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "playwright",
+      "normalized_key": "4980c97edce0",
+      "raw_ja4_samples": [
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0"
+      ],
+      "n": 10,
+      "runnable": true,
+      "stable": true
+    },
+    {
+      "family": "chromium",
+      "version": "156.0.8078.4",
+      "os": "mac",
+      "arch": "arm64",
+      "source": "playwright",
+      "normalized_key": "4980c97edce0",
+      "raw_ja4_samples": [
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0",
+        "t13i1517h2_8daaf6152771_4980c97edce0"
+      ],
+      "n": 10,
+      "runnable": true,
+      "stable": true
+    }
+  ]
+}

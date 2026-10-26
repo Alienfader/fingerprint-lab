@@ -115,7 +115,8 @@ def dump_corpus(entries: list[CorpusEntry], out_dir: str, command: str,
     (out / filename).write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
 
 
-def build_corpus(builds: list[ChromiumBuild], n: int, out_dir: str) -> list[CorpusEntry]:
+def build_corpus(builds: list[ChromiumBuild], n: int, out_dir: str,
+                 command: str | None = None) -> list[CorpusEntry]:
     with tempfile.TemporaryDirectory() as d:
         cert, key = str(Path(d) / "c.pem"), str(Path(d) / "k.pem")
         subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-keyout", key,
@@ -128,5 +129,5 @@ def build_corpus(builds: list[ChromiumBuild], n: int, out_dir: str) -> list[Corp
         finally:
             srv.stop()
     dump_corpus(entries, out_dir,
-                "python -m versionmap.corpus --out %s --n %d" % (out_dir, n))
+                command or "python -m versionmap --out %s --n %d" % (out_dir, n))
     return entries

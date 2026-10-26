@@ -1,0 +1,70 @@
+{
+  "keys": {
+    "4980c97edce0": [
+      {
+        "arch": "arm64",
+        "family": "chromium",
+        "os": "mac",
+        "source": "playwright",
+        "version": "151.0.7922.34"
+      },
+      {
+        "arch": "arm64",
+        "family": "chromium",
+        "os": "mac",
+        "source": "playwright",
+        "version": "156.0.8078.4"
+      }
+    ],
+    "cb7bf5808d99": [
+      {
+        "arch": "arm64",
+        "family": "chromium",
+        "os": "mac",
+        "source": "cft",
+        "version": "150.0.7871.124"
+      }
+    ],
+    "d8a2da3f94cd": [
+      {
+        "arch": "arm64",
+        "family": "chromium",
+        "os": "mac",
+        "source": "cft",
+        "version": "130.0.6723.116"
+      },
+      {
+        "arch": "arm64",
+        "family": "chromium",
+        "os": "mac",
+        "source": "cft",
+        "version": "140.0.7339.207"
+      }
+    ],
+    "dcad5a053991": [
+      {
+        "arch": "arm64",
+        "family": "chromium",
+        "os": "mac",
+        "source": "cft",
+        "version": "146.0.7680.165"
+      }
+    ]
+  },
+  "metadata": {
+    "arch": "arm64",
+    "command": "python -m versionmap --out runs/2026-10-25-version-map --n 10",
+    "generated_at": "2026-10-26T02:03:27.883238+00:00",
+    "launch_flags": [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-background-networking",
+      "--ignore-certificate-errors"
+    ],
+    "os": "mac",
+    "recipe": "direct-launch chromium, normalized ClientHello key (tls.ja4_norm)"
+  }
+}
