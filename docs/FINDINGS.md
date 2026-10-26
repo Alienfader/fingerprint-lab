@@ -5,8 +5,14 @@
 This is the consolidated write-up of a five-phase investigation into whether a server
 can tell a real browser from a well-formed forgery by checking that a client's layers —
 TLS, HTTP/2, HTTP headers, and the JavaScript/GPU environment — agree *with each other*.
-Every number below is produced by a committed artifact in this repo and is reproducible
-with the command listed at the end of its section. Nothing here is hand-asserted.
+Every headline number below is produced by a committed artifact in this repo and is
+reproducible with the command at the end of its section (where `python` means the repo's
+`.venv/bin/python`). The two exceptions are called out inline: a pair of *motivating
+spike measurements* in Phase 2 (the ~25 pre-fix keys and the curl_cffi-vs-Chrome-130 JA4
+collision) that pre-date the committed runs — these are recorded in the artifacts' own
+prose (the version-map and cross-layer READMEs and the design spec), not reproduced by the
+Phase 2 command. Nothing here is hand-asserted beyond those two, which the artifacts
+themselves label as prior de-risking observations.
 
 **Scope and ethics, stated once, up front.** The whole lab is self-only. Every client —
 real browser, impersonation library, or forger — is pointed at the researcher's own
@@ -48,8 +54,10 @@ produce it (`runs/2026-10-25-version-map/`). Getting a *stable* key required fix
 bugs that make naive JA4 vary between connections of the same build: GREASE values inside
 `signature_algorithms` (which most JA4 code filters from ciphers/extensions but forgets
 here), and the resumption extensions `pre_shared_key`/`early_data`. Before the fix, Chrome
-156 produced ~25 distinct raw keys over 40 connections; after it, **6 of 6** runnable
-builds gave a single normalized key across all captured connections.
+156 produced ~25 distinct raw keys over 40 connections (a prior de-risking measurement the
+version-map README records as *not part of this artifact*); after it, **6 of 6** runnable
+builds gave a single normalized key across all captured connections (this half *is* the
+Phase 2 run).
 
 But the map's resolving power was weak and, worse, fragile:
 
@@ -59,14 +67,17 @@ But the map's resolving power was weak and, worse, fragile:
 - The clean separation was an artifact of fixing **one** launch profile. The normalized
   key is **launch-profile-dominated, not version-dominated**: the same build under a
   different launch profile produces a different key, and keys collide across versions.
-- The decisive measurement: **`curl_cffi chrome124` and a real Chrome 130 driven through
-  Playwright emit a byte-identical full JA4** — `t13i1515h2_8daaf6152771_02713d6af862`. A
+- The decisive observation (a committed spike result recorded in the Phase 3 cross-layer
+  README and the design spec — the `curl_cffi` value is in `scores.json`, the Chrome-130
+  side is the README's noted comparison, not a second value in a data file): **`curl_cffi
+  chrome124` and a real Chrome 130 driven through Playwright emit a byte-identical full
+  JA4** — `t13i1515h2_8daaf6152771_02713d6af862`. A
   trivial impersonation library is indistinguishable from a real browser at the TLS layer,
   and can even collide with a genuine build under a mainstream automation profile.
 
 **Conclusion: JA4 — full or normalized — is treated as a defeated input for this kind of
 detection.** The map stays in the repo as the evidence that produced the negative result.
-Reproduce: `python -m versionmap --out runs/2026-10-25-version-map`.
+Reproduce: `python -m versionmap --out runs/2026-10-25-version-map --n 10`.
 
 ---
 
@@ -112,7 +123,7 @@ bound to the TLS connection** — so a forger can `POST` a hand-made JSON payloa
 I built that forger and measured it as an **evasion ladder**, each rung neutralizing
 exactly one contradiction, scored by the **real** Phase 3 scorer (`runs/2026-10-26-forger/`):
 
-| rung | what it fixes | scorer verdict | surviving contradiction |
+| rung | tell it introduces | scorer verdict | surviving contradiction |
 |---|---|---|---|
 | rung0 naive (no JS) | nothing | automated | `js_absent` |
 | rung1 | adds JS, `webdriver=true` | automated | `webdriver_true` |
@@ -130,8 +141,9 @@ values — scores **`real`, high confidence, zero contradictions** against the f
 **The passive scorer is defeated.** The reason is structural: every passive check reads a
 value the client *reports about itself*, so a client that reports coherent values is, by
 construction, indistinguishable from a real one. Passive cross-layer consistency is a
-**finite, enumerable set of checks a forger can exhaust**. The attacker's measured cost to
-get there: an impersonation library plus ~12 coherent JSON fields plus a two-request nonce
+**finite, enumerable set of checks a forger can exhaust**. The attacker's cost to get
+there, counted as artifacts rather than time or money: an impersonation library plus ~12
+coherent JSON fields plus a two-request nonce
 replay. Reproduce: `python -m forger --out runs/2026-10-26-forger`.
 
 ---
@@ -186,9 +198,11 @@ moved the honest version of the thesis from where it started:
   catches the coherent forger and raises the attacker's floor to running a real browser.
 
 What it does **not** do is close the door, and the project is honest about why. The
-defender's cost per added cross-check stays roughly flat (one more check, one more
-oracle), while the attacker's cost rises in discrete steps — fabricate values → run an
-engine → and, past where this work stops, **bind the proof to the connection**. The
+argued shape of the asymmetry — not itself a measured artifact, unlike the attacker-side
+ladders — is that the defender's cost per added cross-check stays roughly flat (one more
+check, one more oracle), while the attacker's cost rises in discrete steps that *were*
+measured: fabricate values → run an engine → and, past where this work stops, **bind the
+proof to the connection**. The
 unaddressed frontier is channel binding: tying the challenge answer (and the JS layer
 generally) to the same TLS connection that was fingerprinted, so a forger cannot have a
 real browser answer on its behalf and relay the result. That is the natural next arm.
@@ -214,7 +228,7 @@ real browser answer on its behalf and relay the result. That is the natural next
 
 | phase | directory | reproduce |
 |---|---|---|
-| 2 — version map | `runs/2026-10-25-version-map/` | `python -m versionmap --out runs/2026-10-25-version-map` |
+| 2 — version map | `runs/2026-10-25-version-map/` | `python -m versionmap --out runs/2026-10-25-version-map --n 10` |
 | 3 — cross-layer scorer | `runs/2026-10-26-crosslayer/` | `python -m crosslayer --out runs/2026-10-26-crosslayer` |
 | 4 — coherent forger | `runs/2026-10-26-forger/` | `python -m forger --out runs/2026-10-26-forger` |
 | 5 — active challenge | `runs/2026-10-26-challenge/` | `python -m challenge --out runs/2026-10-26-challenge` |
