@@ -1,0 +1,23 @@
+{
+  "command": ".venv/bin/python -m challenge --out runs/2026-10-26-challenge",
+  "rungs": [
+    {
+      "name": "honest-browser",
+      "tls_layer": "real-chromium",
+      "runs_engine": true,
+      "passed": true
+    },
+    {
+      "name": "coherent-forger",
+      "tls_layer": "curl_cffi",
+      "runs_engine": false,
+      "passed": false
+    },
+    {
+      "name": "engine-forger",
+      "tls_layer": "curl_cffi",
+      "runs_engine": true,
+      "passed": true
+    }
+  ]
+}
