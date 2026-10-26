@@ -9,6 +9,8 @@ The key is a JA4-style ClientHello hash computed after a normalization pass (exp
 - **GREASE values inside `signature_algorithms`.** Chromium injects a random GREASE code point into the signature_algorithms list on each connection. Naive JA4 implementations filter GREASE from ciphers, extensions and versions but forget this list, so JA4_c changes from one connection to the next even though nothing about the build changed. I strip GREASE there too.
 - **Resumption extensions `pre_shared_key` (0x0029) and `early_data` (0x002a).** These appear only when the client attempts session resumption, so they toggle between connections of the same build. They are excluded so a resumed and a fresh connection give the same key.
 
+Each entry's `source` (cft or playwright) records only where the binary came from. Every build, including the playwright-sourced ones, was launched directly by my harness with the flags listed under Scope and caveats, so all keys are from the direct-launch profile.
+
 The Phase 1 artifact (`runs/2026-10-25/phase1_capture.json`) predates the GREASE-in-signature_algorithms fix, so its browser JA4_c was computed by the old code. I have not re-run Phase 1.
 
 ## Stability finding
@@ -42,7 +44,7 @@ A range key means those builds are indistinguishable by this key; the map can sa
 
 - Chrome/Chromium only, on mac/arm64, 6 runnable builds (130.0.6723.116, 140.0.7339.207, 146.0.7680.165, 150.0.7871.124, 151.0.7922.34, 156.0.8078.4).
 - Not runnable on this machine, so excluded: 120.0.6099.109 (OS-incompatible on this macOS).
-- The key is valid only for the recorded launch profile (direct launch with these flags): `--headless=new --disable-gpu --no-sandbox --no-first-run --no-default-browser-check --disable-background-networking --ignore-certificate-errors`. Playwright's automation flags give a different key for the same build.
+- The key is valid only for the recorded launch profile (direct launch with these flags): `--headless=new --disable-gpu --no-sandbox --no-first-run --no-default-browser-check --disable-background-networking --ignore-certificate-errors`. During de-risking I saw a different key for the same build under Playwright's automation flags (an observation outside this artifact, not computed from corpus.json).
 - Multi-OS coverage is deferred; it needs my own Windows and Linux VMs.
 - Enrichment from public fingerprint datasets is deferred pending a license check.
 
@@ -52,6 +54,6 @@ A range key means those builds are indistinguishable by this key; the map can sa
 python -m versionmap --out runs/2026-10-25-version-map --n 10
 ```
 
-Generated at 2026-10-26T02:03:27.883238+00:00.
+Generated at 2026-10-26T02:03:27.880416+00:00.
 
 Author: Thiago Goncalves

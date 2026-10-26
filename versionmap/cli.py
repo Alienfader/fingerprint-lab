@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,6 +46,10 @@ def render_readme(entries: list[CorpusEntry], vmap, metadata: dict) -> str:
       "(0x002a).** These appear only when the client attempts session "
       "resumption, so they toggle between connections of the same build. They "
       "are excluded so a resumed and a fresh connection give the same key.\n")
+    a("Each entry's `source` (cft or playwright) records only where the binary "
+      "came from. Every build, including the playwright-sourced ones, was "
+      "launched directly by my harness with the flags listed under Scope and "
+      "caveats, so all keys are from the direct-launch profile.\n")
     a("The Phase 1 artifact (`runs/2026-10-25/phase1_capture.json`) predates the "
       "GREASE-in-signature_algorithms fix, so its browser JA4_c was computed by "
       "the old code. I have not re-run Phase 1.\n")
@@ -88,8 +93,10 @@ def render_readme(entries: list[CorpusEntry], vmap, metadata: dict) -> str:
         a("- Not runnable on this machine, so excluded: %s (OS-incompatible on "
           "this macOS)." % ", ".join(e.version for e in excluded))
     a("- The key is valid only for the recorded launch profile (direct launch "
-      "with these flags): `%s`. Playwright's automation flags give a different "
-      "key for the same build." % " ".join(metadata["launch_flags"]))
+      "with these flags): `%s`. During de-risking I saw a different key for "
+      "the same build under Playwright's automation flags (an observation "
+      "outside this artifact, not computed from corpus.json)."
+      % " ".join(metadata["launch_flags"]))
     a("- Multi-OS coverage is deferred; it needs my own Windows and Linux VMs.")
     a("- Enrichment from public fingerprint datasets is deferred pending a "
       "license check.\n")
@@ -108,6 +115,10 @@ def main(argv: list[str] | None = None) -> int:
 
     command = "python -m versionmap --out %s --n %d" % (args.out, args.n)
     builds = discover_chromium_builds()
+    if not builds:
+        print("error: no Chromium builds discovered; nothing to capture",
+              file=sys.stderr)
+        return 1
     entries = build_corpus(builds, args.n, args.out, command=command)
     vmap = build_version_map(entries)
     metadata = {

@@ -28,3 +28,12 @@ def test_cli_end_to_end(tmp_path):
         assert h in readme
     for banned in ("Claude", "Anthropic"):
         assert banned not in readme
+
+
+def test_cli_no_builds_returns_1_and_writes_nothing(tmp_path, monkeypatch, capsys):
+    from versionmap import cli
+    monkeypatch.setattr(cli, "discover_chromium_builds", lambda: [])
+    out = tmp_path / "out"
+    assert cli.main(["--out", str(out), "--n", "1"]) == 1
+    assert "no Chromium builds" in capsys.readouterr().err
+    assert not out.exists() or not any(out.iterdir())
