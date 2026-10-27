@@ -23,6 +23,10 @@ No third-party target is ever probed.
 ## Quickstart
 
 ```bash
+# 0. get the code
+git clone https://github.com/Alienfader/fingerprint-lab.git
+cd fingerprint-lab
+
 # 1. set up (Python 3.12+; developed on 3.15, CI on 3.12/3.13)
 ./bootstrap.sh                      # creates .venv, installs deps + a Chromium build
 #    ...or, equivalently, by hand:
